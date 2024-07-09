@@ -1,6 +1,7 @@
 from PIL.Image import Image
 from fastapi import HTTPException, UploadFile, status
 
+
 class Images:
     async def validate_type(file: UploadFile) -> UploadFile:
         if file.content_type not in ["image/jpg", "image/jpeg", "image/png"]:
@@ -97,7 +98,7 @@ class Images:
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
-    def analyze_colors(image_path):
+    def analyze_colors(image_path): # 색상 인식
         import cv2
         import numpy as np
 
@@ -113,9 +114,9 @@ class Images:
 
         # 색상과 채도에 따라 필기와 인쇄된 글 분리
         if sat_std > 15 and hue_std > 20:
-            print("이미지는 샤프 펜슬로 쓴 필기일 가능성이 높습니다.")
+            print("이미지는 학생의 샤프펜슬 필기일 가능성이 높습니다.")
         else:
-            print("이미지는 흑백 인쇄된 글일 가능성이 높습니다.")
+            print("이미지는 문항일 가능성이 높습니다.")
 
     def save_img(image: Image, file_path: str):
         image.save(file_path)

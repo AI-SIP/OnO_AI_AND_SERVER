@@ -16,9 +16,9 @@ def create_file_path(file_name):
 
     file_id = uuid4() # 각 클라이언트마다 고유한 파일 경로 생성
     extension=file_name.split('.')[-1]
-    paths = {"input_path": f"./imgs/{file_id}.input.{extension}",
-             "output_path": f"./imgs/{file_id}.output.{extension}",
-             "mask_path": f"./imgs/{file_id}_mask.{extension}",}
+    paths = {"input_path": f"./app/imgs/{file_id}.input.{extension}",
+             "output_path": f"./app/imgs/{file_id}.output.{extension}",
+             "mask_path": f"./app/imgs/{file_id}_mask.{extension}",}
 
     return paths
 
