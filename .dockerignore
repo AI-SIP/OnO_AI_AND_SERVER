@@ -1,0 +1,5 @@
+# .dockerignore
+.idea
+.git
+.gitignore
+*.log
