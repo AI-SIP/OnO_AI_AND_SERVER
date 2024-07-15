@@ -1,21 +1,22 @@
-FROM ubuntu:latest
-LABEL authors="semin"
-ENTRYPOINT ["top", "-b"]
-
-#
+# 파이썬 이미지 사용
 FROM python:3.12
 
 # 작업 디렉토리 설정
-WORKDIR /ono
+WORKDIR /test
 
-# 의존성 파일 복사
-COPY ./requirements.txt /ono/requirements.txt
+# 의존성 파일 복사 및 설치
+COPY ./requirements.txt /test/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /test/requirements.txt
 
-# 의존성 설치
-RUN pip install --no-cache-dir --upgrade -r /ono/requirements.txt
+# 필요한 시스템 패키지 설치 (opencv를 위해)
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-glx \
+    libglib2.0-0
 
-# 현재 디렉토리의 모든 파일을 컨테이너의 작업 디렉토리로 복사
-COPY ./app /ono/app/
+# 애플리케이션 코드 복사
+COPY ./app /test/app/
 
+# 실행할 위치
+WORKDIR /test/app
 # 컨테이너 실행 시 실행할 명령어
-CMD ["uvicorn", "app.main:app","--proxy-headers", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
