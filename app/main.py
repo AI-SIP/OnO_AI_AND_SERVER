@@ -5,23 +5,20 @@ from urllib.parse import urlparse
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException, File, UploadFile, Depends
 from starlette.responses import StreamingResponse, JSONResponse
-from app.ColorRemover import ColorRemover
-import app.ImageFunctions as ImageManager
+from ColorRemover import ColorRemover
+import ImageFunctions as ImageManager
 from boto3 import client
 
 app = FastAPI()
 paths = dict()
 
-'''
-보안 주의
-'''
-BUCKET_NAME = "myawsbucket-mvp"
+BUCKET_NAME = ""
 s3_client = client(
         "s3",
         aws_access_key_id="",
         aws_secret_access_key="",
         region_name="ap-northeast-2",
-)
+    )
 
 
 def create_file_path(obj_path, extension):
