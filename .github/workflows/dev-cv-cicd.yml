@@ -12,7 +12,7 @@ env:
   AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ORG_NAME: AI-SIP
-  DOCKER_IMAGE: ghcr.io/${{github.repository}}/dev-cv-image
+  DOCKER_IMAGE: ghcr.io/ai-sip/mvp_cv/dev-cv-image
   VERSION: ${{ github.sha }}
   NAME: dev-cv-container
   TAG: v1
