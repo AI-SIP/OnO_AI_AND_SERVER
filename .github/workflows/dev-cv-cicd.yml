@@ -11,7 +11,8 @@ env:
   AWS_S3_SECRET_ACCESS_KEY: ${{ secrets.AWS_S3_SECRET_ACCESS_KEY }}
   AWS_S3_BUCKET_NAME: ${{ secrets.AWS_S3_BUCKET_NAME }}
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  DOCKER_IMAGE: ghcr.io/${{ github.actor }}/dev-cv-image
+  ORG_NAME: AI-SIP
+  DOCKER_IMAGE: ghcr.io/${{github.repository}}/dev-cv-image
   VERSION: ${{ github.sha }}
   NAME: dev-cv-container
   TAG: v1
@@ -60,7 +61,7 @@ jobs:
           push: true
           tags: ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
           platforms: linux/amd64,linux/arm64
-  
+
   deploy:
     needs: build
     name: Deploy
@@ -79,6 +80,6 @@ jobs:
           sudo docker stop ${{ env.NAME }} || true
           sudo docker rm ${{ env.NAME }} || true
           sudo docker rmi ${{ env.DOCKER_IMAGE }}:${{ env.TAG }} || true
-          sudo docker run -d -p 8000:8000 --name ${{ env.NAME }} --restart always ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
+          sudo docker run -d --name ${{ env.NAME }} -p 8000:8000 --restart always ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
           
           
