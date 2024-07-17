@@ -8,17 +8,19 @@ from starlette.responses import StreamingResponse, JSONResponse
 from ColorRemover import ColorRemover
 import ImageFunctions as ImageManager
 from boto3 import client
+import os
 
 app = FastAPI()
 paths = dict()
 
-BUCKET_NAME = ""
+# s3 설정
+BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 s3_client = client(
-        "s3",
-        aws_access_key_id="",
-        aws_secret_access_key="",
-        region_name="ap-northeast-2",
-    )
+    "s3",
+    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
+    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
+    region_name=os.getenv('AWS_REGION'),
+)
 
 
 def create_file_path(obj_path, extension):
