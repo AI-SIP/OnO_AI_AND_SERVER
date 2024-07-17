@@ -1,8 +1,6 @@
 name: Build and Deploy to EC2 using GHCR
 
 on:
-  push:
-    branches: [ develop ]
   pull_request:
     branches: [ main ]
 
