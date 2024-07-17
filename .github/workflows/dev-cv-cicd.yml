@@ -79,6 +79,6 @@ jobs:
           sudo docker stop ${{ env.NAME }} || true
           sudo docker rm ${{ env.NAME }} || true
           sudo docker rmi ${{ env.DOCKER_IMAGE }}:${{ env.TAG }} || true
-          sudo docker run -d -p 8000:8000 --name dev-cv-container --restart always ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
+          sudo docker run -d -p 8000:8000 --name ${{ env.NAME }} --restart always ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
           
           
