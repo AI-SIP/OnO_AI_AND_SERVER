@@ -1,6 +1,9 @@
 # 파이썬 이미지 사용
 FROM python:3.12
 
+# 라벨 추가
+LABEL org.opencontainers.image.source="https://github.com/AI-SIP/MVP_CV"
+
 # 작업 디렉토리 설정
 WORKDIR /test
 

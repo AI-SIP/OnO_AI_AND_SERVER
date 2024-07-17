@@ -52,7 +52,7 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
-        
+
       - name: Build and push Docker image
         id: docker_build
         uses: docker/build-push-action@v2
@@ -74,12 +74,14 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_TOKEN }}
-      
+
+      - name: Pull Docker Image
+        run: sudo docker pull ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
+
       - name: Docker run
         run: |
           sudo docker stop ${{ env.NAME }} || true
           sudo docker rm ${{ env.NAME }} || true
-          sudo docker rmi ${{ env.DOCKER_IMAGE }}:${{ env.TAG }} || true
           sudo docker run -d --name ${{ env.NAME }} -p 8000:8000 --restart always ${{ env.DOCKER_IMAGE }}:${{ env.TAG }}
           
           
