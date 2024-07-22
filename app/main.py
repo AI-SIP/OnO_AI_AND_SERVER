@@ -15,9 +15,9 @@ app = FastAPI()
 paths = dict()
 
 # s3 설정
-BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
-session = boto3.Session(profile_name='user-s3full')
-s3_client = client('s3')
+s3_client = boto3.client('s3')
+BUCKET_NAME = s3_client.list_buckets()[0]
+
 
 
 def create_file_path(obj_path, extension):
