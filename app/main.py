@@ -8,7 +8,6 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Depends
 from starlette.responses import StreamingResponse, JSONResponse
 from ColorRemover import ColorRemover
 import ImageFunctions as ImageManager
-from boto3 import client
 import os
 
 app = FastAPI()
@@ -17,11 +16,10 @@ paths = dict()
 # s3 설정
 s3_client = boto3.client('s3')
 response = s3_client.list_buckets()
-if 'Buckets' in response and response['Buckets']:
+try:
     BUCKET_NAME = response['Buckets'][0]['Name']  # 첫 번째 버킷의 이름
-    print("First bucket name:", BUCKET_NAME)
-else:
-    print("No buckets found.")
+except Exception as e:
+    raise HTTPException(status_code=404, detail='No Buckets found in S3')
 
 def create_file_path(obj_path, extension):
     global paths
@@ -31,12 +29,9 @@ def create_file_path(obj_path, extension):
              "output_path": f"{dir_path}/{file_id}.output.{extension}",
              "mask_path": f"{dir_path}/{file_id}.mask.{extension}",
              "extension": extension}
-    print(paths)
-
 
 def get_file_path():
     return paths
-
 
 def parse_s3_url(full_url: str):
     """ URL에서 S3 키를 추출 """
@@ -63,7 +58,6 @@ def upload_image_to_s3(file_bytes, file_path):
 @app.get("/process-color/{full_url:path}")
 def process_color(full_url: str):
     """ color-based handwriting detection & Telea Algorithm-based inpainting """
-    print(full_url)
     s3_key = parse_s3_url(full_url)
     create_file_path(s3_key, s3_key.split(".")[-1])
     img_bytes = download_image_from_s3(s3_key)  # download from S3
@@ -77,21 +71,6 @@ def process_color(full_url: str):
     upload_image_to_s3(img_output_bytes, paths["output_path"])
 
     return JSONResponse(content={"message": "File processed successfully", "output": paths['output_path']})
-
-
-@app.get("/show-output")
-def showByOutput():
-    try:
-        img_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=paths["output_path"])
-    except ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == 'NoSuchKey':
-            raise HTTPException(status_code=404, detail="File not found")
-        else:
-            raise HTTPException(status_code=500, detail=e)
-
-    return StreamingResponse(content=img_obj['Body'], media_type="image/" + paths["extension"])
-
 
 @app.get("/show-url")
 def showByUrl(full_url: str):
@@ -115,7 +94,7 @@ async def upload_directly(upload_file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="No input file")
         upload_file, extension = await ImageManager.validate_type(upload_file)
         upload_file = await ImageManager.validate_size(upload_file)
-        create_file_path(upload_file.filename, extension)  # 경로 설정
+        create_file_path('images/', extension)  # 경로 설정
         s3_client.upload_fileobj(upload_file.file, BUCKET_NAME, paths["input_path"])
     except Exception:
         raise HTTPException(status_code=500, detail="File upload failed")
