@@ -11,7 +11,6 @@ import ImageFunctions as ImageManager
 import os
 
 app = FastAPI()
-paths = dict()
 
 # s3 설정
 s3_client = boto3.client('s3')
@@ -29,6 +28,7 @@ def create_file_path(obj_path, extension):
              "output_path": f"{dir_path}/{file_id}.output.{extension}",
              "mask_path": f"{dir_path}/{file_id}.mask.{extension}",
              "extension": extension}
+    return paths
 
 def get_file_path():
     return paths
@@ -59,7 +59,7 @@ def upload_image_to_s3(file_bytes, file_path):
 def process_color(full_url: str):
     """ color-based handwriting detection & Telea Algorithm-based inpainting """
     s3_key = parse_s3_url(full_url)
-    create_file_path(s3_key, s3_key.split(".")[-1])
+    paths = create_file_path(s3_key, s3_key.split(".")[-1])
     img_bytes = download_image_from_s3(s3_key)  # download from S3
 
     target_rgb = (34, 30, 235)  # 221EEB in RGB
