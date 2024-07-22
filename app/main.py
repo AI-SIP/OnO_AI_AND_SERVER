@@ -16,9 +16,7 @@ paths = dict()
 
 # s3 설정
 s3_client = boto3.client('s3')
-BUCKET_NAME = s3_client.list_buckets()[0]
-
-
+BUCKET_NAME = s3_client.list_buckets()['Buckets']['Name']
 
 def create_file_path(obj_path, extension):
     global paths
