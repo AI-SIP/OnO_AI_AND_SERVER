@@ -2,6 +2,7 @@ import io
 from uuid import uuid4
 from urllib.parse import urlparse
 
+import boto3
 from botocore.exceptions import ClientError
 from fastapi import FastAPI, HTTPException, File, UploadFile, Depends
 from starlette.responses import StreamingResponse, JSONResponse
@@ -15,12 +16,8 @@ paths = dict()
 
 # s3 설정
 BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
-s3_client = client(
-    "s3",
-    aws_access_key_id=os.getenv('AWS_ACCESS_KEY_ID'),
-    aws_secret_access_key=os.getenv('AWS_SECRET_ACCESS_KEY'),
-    region_name=os.getenv('AWS_REGION'),
-)
+session = boto3.Session(profile_name='user-s3full')
+s3_client = client('s3')
 
 
 def create_file_path(obj_path, extension):
