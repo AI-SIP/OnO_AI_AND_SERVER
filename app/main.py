@@ -16,7 +16,12 @@ paths = dict()
 
 # s3 설정
 s3_client = boto3.client('s3')
-BUCKET_NAME = s3_client.list_buckets()['Buckets']['Name']
+response = s3_client.list_buckets()
+if 'Buckets' in response and response['Buckets']:
+    BUCKET_NAME = response['Buckets'][0]['Name']  # 첫 번째 버킷의 이름
+    print("First bucket name:", BUCKET_NAME)
+else:
+    print("No buckets found.")
 
 def create_file_path(obj_path, extension):
     global paths
