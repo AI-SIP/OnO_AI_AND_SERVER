@@ -52,12 +52,12 @@ def upload_image_to_s3(file_bytes, file_path):
     s3_client.upload_fileobj(file_bytes, BUCKET_NAME, file_path)
 
 
-@app.get("/", status_code=status.HTTP_200_O)
+@app.get("/", status_code=status.HTTP_200_OK)
 def greeting():
     return JSONResponse(content={"message": "Hello!"})
 
 
-@app.post("/process-color/{full_url}")
+@app.post("/process-color")
 def process_color(full_url: str):
     """ color-based handwriting detection & Telea Algorithm-based inpainting """
     try:
@@ -71,12 +71,13 @@ def process_color(full_url: str):
         upload_image_to_s3(img_mask_bytes, paths["mask_path"])
         upload_image_to_s3(img_output_bytes, paths["output_path"])
         return JSONResponse(content={"message": "File processed successfully", "path": paths})
+
     except Exception as pe:
         print(f"Error during processing: {pe}")
         raise HTTPException(status_code=500, detail="Error processing the image.")
 
 
-@app.get("/show-url/{full_url}")
+@app.get("/show-url")
 def showByUrl(full_url: str):
     s3_key = parse_s3_url(full_url)
     try:
@@ -107,4 +108,3 @@ async def upload_directly(upload_file: UploadFile = File(...)):
 
     return {"message": f"File {upload_file.filename} uploaded successfully",
             "path": paths["input_path"]}
-
