@@ -8,13 +8,16 @@ from starlette import status
 from starlette.responses import StreamingResponse, JSONResponse
 from ColorRemover import ColorRemover
 import ImageFunctions as ImageManager
-import os
+import logging
+
+# 로깅 추가
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 s3_client = boto3.client('s3')
-response = s3_client.list_buckets()
-
 try:
+    response = s3_client.list_buckets()
     BUCKET_NAME = response['Buckets'][0]['Name']  # 첫 번째 버킷의 이름
 except Exception as e:
     raise HTTPException(status_code=404, detail='No Buckets found in S3')
@@ -57,23 +60,30 @@ def greeting():
     return JSONResponse(content={"message": "Hello!"})
 
 
-@app.post("/process-color")
+@app.get("/process-color")
 def process_color(full_url: str):
     """ color-based handwriting detection & Telea Algorithm-based inpainting """
+    logger.info("Processing color for URL: %s", full_url)
     try:
         s3_key = parse_s3_url(full_url)
         paths = create_file_path(s3_key, s3_key.split(".")[-1])
         img_bytes = download_image_from_s3(s3_key)  # download from S3
+        logger.info("Key is : %s and Start processing", s3_key)
+
         target_rgb = (34, 30, 235)  # 221EEB in RGB
         color_remover = ColorRemover(target_rgb, tolerance=20)
         img_mask_bytes, img_output_bytes = color_remover.process(img_bytes, paths['extension'])
+        logger.info("Finished Processing, and Start Uploading Image")
+
         upload_image_to_s3(io.BytesIO(img_bytes), paths["input_path"])
         upload_image_to_s3(img_mask_bytes, paths["mask_path"])
         upload_image_to_s3(img_output_bytes, paths["output_path"])
+
+        logger.info("All finished Successfully")
         return JSONResponse(content={"message": "File processed successfully", "path": paths})
 
     except Exception as pe:
-        print(f"Error during processing: {pe}")
+        logger.error("Error during processing: %s", pe)
         raise HTTPException(status_code=500, detail="Error processing the image.")
 
 
