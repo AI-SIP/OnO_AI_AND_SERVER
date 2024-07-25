@@ -30,7 +30,7 @@ jobs:
           echo "AWS_REGION=${AWS_REGION}" >> $GITHUB_ENV
 
       - name: Checkout src code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
       
       - name: Setup docker buildx
         id: buildx
