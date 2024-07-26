@@ -61,7 +61,7 @@ def greeting():
 
 
 @app.get("/process-color")
-def process_color(full_url: str):
+def processColor(full_url: str):
     """ color-based handwriting detection & Telea Algorithm-based inpainting """
     logger.info("Processing color for URL: %s", full_url)
     try:
@@ -72,10 +72,10 @@ def process_color(full_url: str):
 
         target_rgb = (34, 30, 235)  # 221EEB in RGB
         color_remover = ColorRemover(target_rgb, tolerance=20)
-        img_mask_bytes, img_output_bytes = color_remover.process(img_bytes, paths['extension'])
+        img_input_bytes, img_mask_bytes, img_output_bytes = color_remover.process(img_bytes, paths['extension'])
         logger.info("Finished Processing, and Start Uploading Image")
 
-        upload_image_to_s3(io.BytesIO(img_bytes), paths["input_path"])
+        upload_image_to_s3(img_input_bytes, paths["input_path"])
         upload_image_to_s3(img_mask_bytes, paths["mask_path"])
         upload_image_to_s3(img_output_bytes, paths["output_path"])
 
