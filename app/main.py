@@ -3,7 +3,7 @@ from uuid import uuid4
 from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
-from fastapi import FastAPI, HTTPException, File, UploadFile, Depends
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from starlette import status
 from starlette.responses import StreamingResponse, JSONResponse
 from ColorRemover import ColorRemover
@@ -40,7 +40,6 @@ def parse_s3_url(full_url: str):
 
 
 def download_image_from_s3(s3_key: str):
-    """ S3에서 이미지를 동기적으로 다운로드 """
     try:
         img_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=s3_key)
         return img_obj['Body'].read()
@@ -51,17 +50,16 @@ def download_image_from_s3(s3_key: str):
 
 
 def upload_image_to_s3(file_bytes, file_path):
-    """ 이미지를 S3에 동기적으로 업로드 """
     s3_client.upload_fileobj(file_bytes, BUCKET_NAME, file_path)
 
 
 @app.get("/", status_code=status.HTTP_200_OK)
 def greeting():
-    return JSONResponse(content={"message": "Hello!"})
+    return JSONResponse(content={"message": "Hello! Let's start image processing"})
 
 
 @app.get("/process-color")
-def process_color(full_url: str):
+def processColor(full_url: str):
     """ color-based handwriting detection & Telea Algorithm-based inpainting """
     logger.info("Processing color for URL: %s", full_url)
     try:
@@ -70,12 +68,12 @@ def process_color(full_url: str):
         img_bytes = download_image_from_s3(s3_key)  # download from S3
         logger.info("Key is : %s and Start processing", s3_key)
 
-        target_rgb = (34, 30, 235)  # 221EEB in RGB
-        color_remover = ColorRemover(target_rgb, tolerance=20)
-        img_mask_bytes, img_output_bytes = color_remover.process(img_bytes, paths['extension'])
+        # target_rgb = (34, 30, 235)  # 221EEB in RGB
+        color_remover = ColorRemover()
+        img_input_bytes, img_mask_bytes, img_output_bytes = color_remover.process(img_bytes, paths['extension'])
         logger.info("Finished Processing, and Start Uploading Image")
 
-        upload_image_to_s3(io.BytesIO(img_bytes), paths["input_path"])
+        upload_image_to_s3(img_input_bytes, paths["input_path"])
         upload_image_to_s3(img_mask_bytes, paths["mask_path"])
         upload_image_to_s3(img_output_bytes, paths["output_path"])
 
