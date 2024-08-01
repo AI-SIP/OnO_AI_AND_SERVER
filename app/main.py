@@ -66,6 +66,7 @@ def processColor(full_url: str):
         s3_key = parse_s3_url(full_url)
         paths = create_file_path(s3_key, s3_key.split(".")[-1])
         img_bytes = download_image_from_s3(s3_key)  # download from S3
+        corrected_img_bytes = ImageManager.correct_rotation(img_bytes, paths['extension'])
         logger.info("Key is : %s and Start processing", s3_key)
 
         # target_rgb = (34, 30, 235)  # 221EEB in RGB
@@ -90,6 +91,8 @@ def showByUrl(full_url: str):
     s3_key = parse_s3_url(full_url)
     try:
         img_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=s3_key)
+        img_bytes = img_obj['Body'].read()
+        corrected_img_bytes = ImageManager.correct_rotation(img_bytes)
     except ClientError as ce:
         error_code = ce.response['Error']['Code']
         if error_code == 'NoSuchKey':
@@ -97,7 +100,7 @@ def showByUrl(full_url: str):
         else:
             raise HTTPException(status_code=500, detail=f"500 error")
 
-    return StreamingResponse(content=img_obj['Body'], media_type="image/" + s3_key.split('.')[-1])
+    return StreamingResponse(content=io.BytesIO(corrected_img_bytes), media_type="image/" + s3_key.split('.')[-1])
 
 
 @app.post("/direct/upload")
