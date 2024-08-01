@@ -69,9 +69,9 @@ def processColor(full_url: str):
         corrected_img_bytes = ImageManager.correct_rotation(img_bytes, paths['extension'])
         logger.info("Key is : %s and Start processing", s3_key)
 
-        # target_rgb = (34, 30, 235)  # 221EEB in RGB
-        color_remover = ColorRemover()
-        img_input_bytes, img_mask_bytes, img_output_bytes = color_remover.process(img_bytes, paths['extension'])
+        target_rgb = (76, 83, 109)  # RGB
+        color_remover = ColorRemover(target_rgb)
+        img_input_bytes, img_mask_bytes, img_output_bytes = color_remover.process(corrected_img_bytes, paths['extension'])
         logger.info("Finished Processing, and Start Uploading Image")
 
         upload_image_to_s3(img_input_bytes, paths["input_path"])

@@ -8,6 +8,7 @@ def rgb_to_hsv(r, g, b):
     hsv_color = cv2.cvtColor(color, cv2.COLOR_RGB2HSV)
     return hsv_color
 
+
 class ColorRemover:
     def __init__(self, target_rgb=(76, 83, 109), tolerance=70):
         self.target_hsv = target_rgb
@@ -38,13 +39,12 @@ class ColorRemover:
         s[gray_mask] = 0
         image_hsv = cv2.merge([h, s, v])
         image_filtered = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2BGR)
-
         return image_filtered
 
     def mask(self, image_rgb):  # important
         image_mask = image_rgb.copy()
-        image_hsv = cv2.cvtColor(image_rgb, cv2.COLOR_BGR2HSV)
-        lower_bound = np.array([100, 5, 5])
+        image_hsv = cv2.cvtColor(image_mask, cv2.COLOR_BGR2HSV)
+        lower_bound = np.array([100, 5, 5])  # blue's hue is 105~135
         upper_bound = np.array([140, 255, 255])
         self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)
 
@@ -88,5 +88,7 @@ class ColorRemover:
         _, result_bytes = cv2.imencode("." + extension, image_output)
 
         return io.BytesIO(input_bytes), io.BytesIO(mask_bytes), io.BytesIO(result_bytes)
+
+
 
 
