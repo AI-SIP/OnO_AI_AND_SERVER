@@ -86,6 +86,29 @@ def processColor(full_url: str):
         raise HTTPException(status_code=500, detail="Error processing the image.")
 
 
+@app.get("/scaling")
+def scaling(full_url: str):
+    logger.info("Processing scaling for URL: %s", full_url)
+    try:
+        s3_key = parse_s3_url(full_url)
+        paths = create_file_path(s3_key, s3_key.split(".")[-1])
+        img_bytes = download_image_from_s3(s3_key)  # download from S3
+        logger.info("Key is : %s and Start processing", s3_key)
+
+        color_remover = ColorRemover()
+        img_output_bytes = color_remover.scaling(img_bytes, 'jpg')
+        logger.info("Finished Scaling, and Start Uploading Image")
+
+        upload_image_to_s3(img_output_bytes, "images/scaled.jpg")
+
+        logger.info("All finished Successfully")
+        return JSONResponse(content={"message": "File processed successfully"})
+
+    except Exception as pe:
+        logger.error("Error during processing: %s", pe)
+        raise HTTPException(status_code=500, detail="Error processing the image.")
+
+
 @app.get("/show-url")
 def showByUrl(full_url: str):
     s3_key = parse_s3_url(full_url)
