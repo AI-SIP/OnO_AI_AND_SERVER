@@ -10,7 +10,7 @@ def rgb_to_hsv(r, g, b):
 
 
 class ColorRemover:
-    def __init__(self, target_rgb=(76, 83, 109), tolerance=70):
+    def __init__(self, target_rgb=(58, 58, 152), tolerance=70):
         self.target_hsv = target_rgb
         self.tolerance = tolerance
         self.target_hsv = rgb_to_hsv(*target_rgb)
@@ -41,17 +41,20 @@ class ColorRemover:
         image_filtered = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2BGR)
         return image_filtered
 
-    def mask(self, image_rgb):  # important
+    def masking(self, image_rgb):  # important
         image_mask = image_rgb.copy()
         image_hsv = cv2.cvtColor(image_mask, cv2.COLOR_BGR2HSV)
-        lower_bound = np.array([100, 5, 5])  # blue's hue is 105~135
+        lower_bound = np.array([100, 10, 20])  # blue's hue is 105~135
         upper_bound = np.array([140, 255, 255])
         self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)
 
-    def inpaint(self, image_rgb):
+        kernel = np.ones((7, 7), np.uint8) # mask 내 노이즈 제거
+        self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)
+
+    def inpainting(self, image_rgb):
         if self.masks is not None and isinstance(self.masks, np.ndarray):
             inpainted_image = image_rgb.copy()
-            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 2, cv2.INPAINT_TELEA)
+            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 3, cv2.INPAINT_TELEA)
             # blurred_region = cv2.GaussianBlur(inpainted_image, (10, 10), 1.5)
             # inpainted_image[self.masks != 0] = blurred_region[self.masks != 0]
 
@@ -74,8 +77,8 @@ class ColorRemover:
         img = cv2.imdecode(buffer, cv2.IMREAD_UNCHANGED)
         image_rgb = self.remove_alpha(img)
 
-        self.mask(image_rgb)  # masking
-        image_inpainted = self.inpaint(image_rgb)  # inpainting
+        self.masking(image_rgb)  # masking
+        image_inpainted = self.inpainting(image_rgb)  # inpainting
 
         # image_input = self.background_filtering(image_rgb, extension)  # input filtering
         image_output = self.background_filtering(image_inpainted, extension)  # output filtering
