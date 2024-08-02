@@ -1,3 +1,5 @@
+import logging
+
 import cv2
 import numpy as np
 import io
@@ -10,8 +12,11 @@ def rgb_to_hsv(r, g, b):
 
 
 class ColorRemover:
-    def __init__(self, target_rgb=(58, 58, 152), tolerance=70):
-        self.target_hsv = target_rgb
+    def __init__(self, target_rgb=(58, 58, 152), tolerance=20):
+        self.size = 0
+        self.height = 0
+        self.width = 0
+        self.target_rgb = target_rgb
         self.tolerance = tolerance
         self.target_hsv = rgb_to_hsv(*target_rgb)
         self.alpha_channel = None
@@ -44,12 +49,13 @@ class ColorRemover:
     def masking(self, image_rgb):  # important
         image_mask = image_rgb.copy()
         image_hsv = cv2.cvtColor(image_mask, cv2.COLOR_BGR2HSV)
-        lower_bound = np.array([100, 10, 20])  # blue's hue is 105~135
+        lower_bound = np.array([100, 20, 20])  # blue's hue is 105~135
         upper_bound = np.array([140, 255, 255])
         self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)
 
-        kernel = np.ones((7, 7), np.uint8) # mask 내 노이즈 제거
-        self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)
+        if self.size > 2048 * 1536:
+            kernel = np.ones((3, 3), np.uint8) # mask 내 노이즈 제거
+            self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)
 
     def inpainting(self, image_rgb):
         if self.masks is not None and isinstance(self.masks, np.ndarray):
@@ -63,6 +69,8 @@ class ColorRemover:
             raise ValueError("Mask is not properly defined or is not a numpy array.")
 
     def remove_alpha(self, image):
+        self.height, self.width = image.shape[:2]
+        self.size = self.height * self.width
         if image.shape[2] == 4:  # RGBA or RGB
             self.alpha_channel = image[:, :, 3]
             image_rgb = image[:, :, :3]
