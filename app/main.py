@@ -115,7 +115,7 @@ def showByUrl(full_url: str):
     try:
         img_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=s3_key)
         img_bytes = img_obj['Body'].read()
-        corrected_img_bytes = ImageManager.correct_rotation(img_bytes)
+        corrected_img_bytes = ImageManager.correct_rotation(img_bytes, s3_key.split(".")[-1])
     except ClientError as ce:
         error_code = ce.response['Error']['Code']
         if error_code == 'NoSuchKey':
