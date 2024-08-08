@@ -28,23 +28,6 @@ class ColorRemover:
         else:
             return image_rgb
 
-    def background_filtering(self, img_rgb, extension):
-        image_filtered = img_rgb.copy()
-        hsv = cv2.cvtColor(image_filtered, cv2.COLOR_BGR2HSV)
-        h, s, v = cv2.split(hsv)
-
-        hist_s, _ = np.histogram(s, bins=256, range=(0, 256))
-        dominant_s = np.argmax(hist_s)
-        hist_v, _ = np.histogram(v, bins=256, range=(0, 256))
-        dominant_v = np.argmax(hist_v)
-
-        gray_mask = (s < dominant_s + 15) & (v > dominant_v - 60)
-        v[gray_mask] = 255
-        s[gray_mask] = 0
-        image_hsv = cv2.merge([h, s, v])
-        image_filtered = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2BGR)
-        return image_filtered
-
     def masking(self, image_rgb):  # important
         image_mask = image_rgb.copy()
         image_hsv = cv2.cvtColor(image_mask, cv2.COLOR_BGR2HSV)
@@ -89,7 +72,7 @@ class ColorRemover:
         image_inpainted = self.inpainting(image_rgb)  # inpainting
 
         # image_input = self.background_filtering(image_rgb, extension)  # input filtering
-        image_output = self.background_filtering(image_inpainted, extension)  # output filtering
+        # image_output = self.background_filtering(image_inpainted, extension)  # output filtering
         image_output = self.filtering(image_inpainted)  # output filtering
 
         image_input = self.combine_alpha(image_rgb)
