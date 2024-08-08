@@ -48,21 +48,20 @@ class ColorRemover:
     def masking(self, image_rgb):  # important
         image_mask = image_rgb.copy()
         image_hsv = cv2.cvtColor(image_mask, cv2.COLOR_BGR2HSV)
-        lower_bound = np.array([105, 30, 30])  # blue's hue is 105~135
-        upper_bound = np.array([140, 255, 255])
+        lower_bound = np.array([105, 10, 30])  # blue's hue is 105~135
+        upper_bound = np.array([135, 255, 255])
         self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)
 
-        if self.size > 2048 * 1536:
-            kernel = np.ones((3, 3), np.uint8) # mask 내 노이즈 제거
+        if self.size > 1024 * 1536:
+            kernel = np.ones((5, 5), np.uint8) # mask 내 노이즈 제거
             self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)
 
     def inpainting(self, image_rgb):
         if self.masks is not None and isinstance(self.masks, np.ndarray):
             inpainted_image = image_rgb.copy()
-            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 3, cv2.INPAINT_TELEA)
+            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 2, cv2.INPAINT_TELEA)
             # blurred_region = cv2.GaussianBlur(inpainted_image, (10, 10), 1.5)
             # inpainted_image[self.masks != 0] = blurred_region[self.masks != 0]
-
             return inpainted_image
         else:
             raise ValueError("Mask is not properly defined or is not a numpy array.")
