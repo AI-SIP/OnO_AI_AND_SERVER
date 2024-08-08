@@ -90,6 +90,7 @@ class ColorRemover:
 
         # image_input = self.background_filtering(image_rgb, extension)  # input filtering
         image_output = self.background_filtering(image_inpainted, extension)  # output filtering
+        image_output = self.filtering(image_inpainted)  # output filtering
 
         image_input = self.combine_alpha(image_rgb)
         image_output = self.combine_alpha(image_output)
@@ -205,6 +206,13 @@ class ColorRemover:
         image_filtered = cv2.cvtColor(image_hsv, cv2.COLOR_HSV2BGR)
         return image_filtered
 
+    def filtering(self, img_rgb):
+        """ 이미지의 명암대비 강화 및 밝기 증가"""
 
+        alpha = 1.2  # 대비 계수
+        beta = 1.1  # 밝기 조절이 필요 없는 경우 0
+        enhanced_contrast_image = cv2.convertScaleAbs(img_rgb, alpha=alpha, beta=beta)  # 대비가 강화된 이미지 생성
+
+        return enhanced_contrast_image
 
 
