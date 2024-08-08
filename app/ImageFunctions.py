@@ -31,18 +31,16 @@ async def validate_size(file: UploadFile) -> UploadFile:
 
 def correct_rotation(img_data: bytes, extension="jpeg") -> bytes:
     """EXIF 정보에 따라 이미지를 올바른 방향으로 회전시키는 함수"""
-    logging.info(f"format is {extension}")
     if extension == "png":
         return img_data
 
     else:  # "jpg" or "jpeg":
         extension = 'jpeg'
         image = Image.open(io.BytesIO(img_data))
-        logging.info("opened format")
         try:
             exif = image.getexif()
             if "exif" is not None:
-                logging.info("exif exists: {!r}".format(exif))
+                # logging.info("exif exists: {!r}".format(exif))
                 orientation_key = next((key for key, value in ExifTags.TAGS.items() if value == 'Orientation'), None)
                 if orientation_key and orientation_key in exif:
                     orientation = exif[orientation_key]
