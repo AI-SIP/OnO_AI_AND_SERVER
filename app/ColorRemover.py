@@ -66,7 +66,7 @@ class ColorRemover:
         img = cv2.imdecode(buffer, cv2.IMREAD_UNCHANGED)
 
         image_rgb = self.remove_alpha(img)
-        image_rgb = self.scaling(image_rgb)  # perspective transforming
+        # image_rgb = self.scaling(image_rgb)  # perspective transforming
 
         self.masking(image_rgb)  # masking
         image_inpainted = self.inpainting(image_rgb)  # inpainting
