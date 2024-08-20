@@ -42,7 +42,7 @@ class ColorRemover:
     def inpainting(self, image_rgb):
         if self.masks is not None and isinstance(self.masks, np.ndarray):
             inpainted_image = image_rgb.copy()
-            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 2, cv2.INPAINT_TELEA)
+            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 5, cv2.INPAINT_TELEA)
             # blurred_region = cv2.GaussianBlur(inpainted_image, (10, 10), 1.5)
             # inpainted_image[self.masks != 0] = blurred_region[self.masks != 0]
             return inpainted_image
@@ -66,7 +66,7 @@ class ColorRemover:
         img = cv2.imdecode(buffer, cv2.IMREAD_UNCHANGED)
 
         image_rgb = self.remove_alpha(img)
-        image_rgb = self.scaling(image_rgb)  # perspective transforming
+        # image_rgb = self.scaling(image_rgb)  # perspective transforming
 
         self.masking(image_rgb)  # masking
         image_inpainted = self.inpainting(image_rgb)  # inpainting
