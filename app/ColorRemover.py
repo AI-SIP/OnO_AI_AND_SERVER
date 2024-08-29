@@ -35,9 +35,9 @@ class ColorRemover:
         upper_bound = np.array([125, 255, 250])
         self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)
 
-        if self.size > 1024 * 1536:
-            kernel = np.ones((5, 5), np.uint8) # mask 내 노이즈 제거
-            self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)
+        '''if self.size > 1024 * 1536:
+            kernel = np.ones((2, 2), np.uint8)  # mask 내 노이즈 제거
+            self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)'''
 
     def inpainting(self, image_rgb):
         if self.masks is not None and isinstance(self.masks, np.ndarray):
