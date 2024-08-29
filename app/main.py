@@ -85,6 +85,63 @@ def processColor(full_url: str):
         logger.error("Error during processing: %s", pe)
         raise HTTPException(status_code=500, detail="Error processing the image.")
 
+@app.get("/analysis/")
+async def analyzeProblem(problem_url: str):
+    """ Curriculum-based Problem Analysis API with CLOVA OCR & ChatGPT  """
+    import requests
+    import uuid
+    import time
+    import json
+
+    logger.info("Analyzing problem from this image URL: %s", problem_url)
+    try:
+        s3_key = parse_s3_url(problem_url)
+        img_bytes = download_image_from_s3(s3_key)  # download from S3
+        extension = s3_key.split(".")[-1]
+        logger.info("Completed Download & Sending Requests... '%s'", s3_key)
+
+        api_url = os.getenv("CLOVA_API_URL")
+        secret_key = os.getenv("CLOVA_SECRET_KEY")
+        image_file = ImageManager.correct_rotation(img_bytes, extension)  # rotating correction
+
+        headers = {
+            'X-OCR-SECRET': secret_key
+        }
+        request_json = {
+            'images': [
+                {
+                    'format': extension,
+                    'name': 'ocr_sample'
+                }
+            ],
+            'requestId': str(uuid.uuid4()),
+            'version': 'V2',
+            'timestamp': int(round(time.time() * 1000)),
+            'enableTableDetection': False
+        }
+        payload = {'message': json.dumps(request_json).encode('utf-8')}
+        files = [
+            ('file', image_file)
+        ]
+        logger.info("Processing OCR & Receiving Responses...")
+
+        ocr_response = requests.request("POST", api_url, headers=headers, data=payload, files=files).text
+        ocr_response_json = json.loads(ocr_response)
+        logger.info("***** Finished Analyzing Successfully *****")
+
+        infer_texts = []
+        for image in ocr_response_json["images"]:
+            for field in image["fields"]:
+                infer_texts.append(field["inferText"])
+        result = ' '.join(infer_texts)
+        print(result)
+
+        return JSONResponse(content={"message": "OCR Finished Successfully", "result": result})
+
+    except Exception as pe:
+        logger.error("Error during OCR: %s", pe)
+        raise HTTPException(status_code=500, detail="Error during OCR.")
+
 
 @app.get("/scaling")
 def scaling(full_url: str):
