@@ -41,3 +41,5 @@ watchfiles==0.22.0
 websockets==12.0
 boto3==1.34.141
 botocore==1.34.141
+requests==2.32.3
+charset-normalizer==3.3.2
