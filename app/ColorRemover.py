@@ -31,8 +31,8 @@ class ColorRemover:
     def masking(self, image_rgb):  # important
         image_mask = image_rgb.copy()
         image_hsv = cv2.cvtColor(image_mask, cv2.COLOR_BGR2HSV)
-        lower_bound = np.array([95, 10, 20])  # blue's hue is 105~120
-        upper_bound = np.array([125, 255, 255])
+        lower_bound = np.array([95, 10, 10])  # blue's hue is 105~120
+        upper_bound = np.array([125, 255, 250])
         self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)
 
         if self.size > 1024 * 1536:
