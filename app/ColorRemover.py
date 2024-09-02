@@ -23,7 +23,7 @@ class ColorRemover:
         self.width = 0
 
         self.target_rgb_list = target_rgb_list
-        self.target_hsv_list = rgb_to_hsv_list(target_rgb_list)
+        self.target_hsv_list = None
         self.tolerance = tolerance
 
         self.alpha_channel = None
@@ -45,6 +45,7 @@ class ColorRemover:
                     self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)'''
 
         self.masks = np.zeros(image_hsv.shape[:2], dtype=np.uint8)
+        self.target_hsv_list = rgb_to_hsv_list(self.target_rgb_list)
         for target_hsv in self.target_hsv_list:
             lower_bound = np.array([max(0, target_hsv[0] - self.tolerance[0]),
                                     max(0, target_hsv[1] - self.tolerance[1]),
@@ -94,12 +95,15 @@ class ColorRemover:
         image_rgb = self.remove_alpha(img)
         # image_rgb = self.scaling(image_rgb)  # perspective transforming
 
-        self.masking(image_rgb)  # masking
-        image_inpainted = self.inpainting(image_rgb)  # inpainting
-
-        # image_input = self.background_filtering(image_rgb, extension)  # input filtering
-        # image_output = self.background_filtering(image_inpainted, extension)  # output filtering
-        image_output = self.filtering(image_inpainted)  # output filtering
+        if len(self.target_rgb_list) != 0:
+            self.masking(image_rgb)  # masking
+            image_inpainted = self.inpainting(image_rgb)  # inpainting
+            # image_input = self.background_filtering(image_rgb, extension)  # input filtering
+            # image_output = self.background_filtering(image_inpainted, extension)  # output filtering
+            image_output = self.filtering(image_inpainted)  # output filtering
+        else:
+            self.masks = np.zeros(image_rgb.shape[:2], dtype=np.uint8)
+            image_output = self.filtering(image_rgb)
 
         image_input = self.combine_alpha(image_rgb)
         image_output = self.combine_alpha(image_output)
