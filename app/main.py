@@ -70,6 +70,8 @@ async def processColor(request: Request):
     try:
         target_rgb_list = []
         for color in colors_list:
+            if color is None:
+                continue
             target_rgb = (color['red'], color['green'], color['blue'])
             target_rgb_list.append(target_rgb)
         logger.info("Target rgb list is %s", target_rgb_list)

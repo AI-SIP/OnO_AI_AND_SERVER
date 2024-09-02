@@ -17,13 +17,13 @@ def rgb_to_hsv_list(rgb_list):
 
 
 class ColorRemover:
-    def __init__(self, target_rgb_list, tolerance=(20, 50, 20)):
+    def __init__(self, target_rgb_list, tolerance=(30, 150, 150)): # 팀 주정뱅이: 30, 150, 150
         self.size = 0
         self.height = 0
         self.width = 0
 
         self.target_rgb_list = target_rgb_list
-        self.target_hsv_list = rgb_to_hsv_list(target_rgb_list)
+        self.target_hsv_list = None
         self.tolerance = tolerance
 
         self.alpha_channel = None
@@ -45,10 +45,12 @@ class ColorRemover:
                     self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)'''
 
         self.masks = np.zeros(image_hsv.shape[:2], dtype=np.uint8)
+        self.target_hsv_list = rgb_to_hsv_list(self.target_rgb_list)
         for target_hsv in self.target_hsv_list:
+            logging.info("target_hsv: %s, tolerance: %s", target_hsv, self.tolerance)
             lower_bound = np.array([max(0, target_hsv[0] - self.tolerance[0]),
-                                    max(0, target_hsv[1] - self.tolerance[1]),
-                                    max(0, target_hsv[2] - self.tolerance[2])])
+                                    max(5, target_hsv[1] - self.tolerance[1]),
+                                    max(5, target_hsv[2] - self.tolerance[2])])
             upper_bound = np.array([min(179, target_hsv[0] + self.tolerance[0]),
                                     min(255, target_hsv[1] + self.tolerance[1]),
                                     min(255, target_hsv[2] + self.tolerance[2])])
@@ -56,19 +58,19 @@ class ColorRemover:
             self.masks = cv2.bitwise_or(self.masks, temp_mask)
 
         # Dilation 적용
-        kernel = np.ones((3,3), np.uint8)
+        '''kernel = np.ones((3,3), np.uint8)
         if self.masks is not None:
-            self.masks = cv2.dilate(self.masks, kernel, iterations=3)
+            self.masks = cv2.dilate(self.masks, kernel, iterations=3)'''
 
         # Opening 적용
         '''if self.size > 1024 * 1536:
-            kernel = np.ones((2, 2), np.uint8)  # mask 내 노이즈 제거
+            kernel = np.ones((1, 1), np.uint8)  # mask 내 노이즈 제거
             self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)'''
 
     def inpainting(self, image_rgb):
         if self.masks is not None and isinstance(self.masks, np.ndarray):
             inpainted_image = image_rgb.copy()
-            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 17, cv2.INPAINT_TELEA)
+            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 15, cv2.INPAINT_TELEA)
             # inpainted_image = cv2.inpaint(inpainted_image, self.masks, 2, cv2.INPAINT_TELEA)
             # inpainted_image[self.masks != 0] = [255, 255, 255]
             return inpainted_image
@@ -94,12 +96,15 @@ class ColorRemover:
         image_rgb = self.remove_alpha(img)
         # image_rgb = self.scaling(image_rgb)  # perspective transforming
 
-        self.masking(image_rgb)  # masking
-        image_inpainted = self.inpainting(image_rgb)  # inpainting
-
-        # image_input = self.background_filtering(image_rgb, extension)  # input filtering
-        # image_output = self.background_filtering(image_inpainted, extension)  # output filtering
-        image_output = self.filtering(image_inpainted)  # output filtering
+        if len(self.target_rgb_list) != 0:
+            self.masking(image_rgb)  # masking
+            image_inpainted = self.inpainting(image_rgb)  # inpainting
+            # image_input = self.background_filtering(image_rgb, extension)  # input filtering
+            # image_output = self.background_filtering(image_inpainted, extension)  # output filtering
+            image_output = self.filtering(image_inpainted)  # output filtering
+        else:
+            self.masks = np.zeros(image_rgb.shape[:2], dtype=np.uint8)
+            image_output = self.filtering(image_rgb)
 
         image_input = self.combine_alpha(image_rgb)
         image_output = self.combine_alpha(image_output)
@@ -218,7 +223,7 @@ class ColorRemover:
     def filtering(self, img_rgb):
         """ 이미지의 명암대비 강화 및 밝기 증가"""
 
-        alpha = 1.2  # 대비 계수
+        alpha = 1.3  # 대비 계수
         beta = 1.1  # 밝기 조절이 필요 없는 경우 0
         enhanced_contrast_image = cv2.convertScaleAbs(img_rgb, alpha=alpha, beta=beta)  # 대비가 강화된 이미지 생성
 
