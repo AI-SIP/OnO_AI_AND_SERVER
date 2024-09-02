@@ -10,14 +10,22 @@ def rgb_to_hsv(r, g, b):
     return hsv_color
 
 
+def rgb_to_hsv_list(rgb_list):
+    colors = np.uint8([[list(rgb) for rgb in rgb_list]])
+    hsv_colors = cv2.cvtColor(colors, cv2.COLOR_RGB2HSV)
+    return hsv_colors.reshape(-1, 3)
+
+
 class ColorRemover:
-    def __init__(self, target_rgb=(58, 58, 152), tolerance=20):
+    def __init__(self, target_rgb_list, tolerance=(20, 50, 20)):
         self.size = 0
         self.height = 0
         self.width = 0
-        self.target_rgb = target_rgb
+
+        self.target_rgb_list = target_rgb_list
+        self.target_hsv_list = rgb_to_hsv_list(target_rgb_list)
         self.tolerance = tolerance
-        self.target_hsv = rgb_to_hsv(*target_rgb)
+
         self.alpha_channel = None
         self.masks = None
 
@@ -31,10 +39,28 @@ class ColorRemover:
     def masking(self, image_rgb):  # important
         image_mask = image_rgb.copy()
         image_hsv = cv2.cvtColor(image_mask, cv2.COLOR_BGR2HSV)
-        lower_bound = np.array([95, 10, 10])  # blue's hue is 105~120
-        upper_bound = np.array([125, 255, 250])
-        self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)
 
+        '''lower_bound = np.array([95, 10, 10])  # target_hsv - tolerance
+                    upper_bound = np.array([125, 255, 255])  # target_hsv + tolerance
+                    self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)'''
+
+        self.masks = np.zeros(image_hsv.shape[:2], dtype=np.uint8)
+        for target_hsv in self.target_hsv_list:
+            lower_bound = np.array([max(0, target_hsv[0] - self.tolerance[0]),
+                                    max(0, target_hsv[1] - self.tolerance[1]),
+                                    max(0, target_hsv[2] - self.tolerance[2])])
+            upper_bound = np.array([min(179, target_hsv[0] + self.tolerance[0]),
+                                    min(255, target_hsv[1] + self.tolerance[1]),
+                                    min(255, target_hsv[2] + self.tolerance[2])])
+            temp_mask = cv2.inRange(image_hsv, lower_bound, upper_bound)
+            self.masks = cv2.bitwise_or(self.masks, temp_mask)
+
+        # Dilation 적용
+        kernel = np.ones((3,3), np.uint8)
+        if self.masks is not None:
+            self.masks = cv2.dilate(self.masks, kernel, iterations=3)
+
+        # Opening 적용
         '''if self.size > 1024 * 1536:
             kernel = np.ones((2, 2), np.uint8)  # mask 내 노이즈 제거
             self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)'''

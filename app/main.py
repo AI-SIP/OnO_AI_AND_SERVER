@@ -4,7 +4,7 @@ from uuid import uuid4
 from urllib.parse import urlparse
 import boto3
 from botocore.exceptions import ClientError
-from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi import FastAPI, HTTPException, File, UploadFile, Request
 from starlette import status
 from starlette.responses import StreamingResponse, JSONResponse
 from ColorRemover import ColorRemover
@@ -59,19 +59,31 @@ def greeting():
     return JSONResponse(content={"message": "Hello! Let's start image processing"})
 
 
-@app.get("/process-color")
-def processColor(full_url: str):
+@app.post("/process-color")
+async def processColor(request: Request):
     """ color-based handwriting detection & Telea Algorithm-based inpainting """
-    logger.info("Processing color for URL: %s", full_url)
+    data = await request.json()
+    full_url = data['fullUrl']
+    colors_list = data['colorsList']
+    tolerance = data.get('tolerance')  # value or None
+
     try:
+        target_rgb_list = []
+        for color in colors_list:
+            target_rgb = (color['red'], color['green'], color['blue'])
+            target_rgb_list.append(target_rgb)
+        logger.info("Target rgb list is %s", target_rgb_list)
+
         s3_key = parse_s3_url(full_url)
         paths = create_file_path(s3_key, s3_key.split(".")[-1])
         img_bytes = download_image_from_s3(s3_key)  # download from S3
         corrected_img_bytes = ImageManager.correct_rotation(img_bytes, paths['extension'])
         logger.info("Key is : %s and Start processing", s3_key)
 
-        # target_rgb = (76, 83, 109)  # RGB
-        color_remover = ColorRemover((58, 58, 152))
+        if tolerance is not None:
+            color_remover = ColorRemover(target_rgb_list, tolerance)
+        else:
+            color_remover = ColorRemover(target_rgb_list)
         img_input_bytes, img_mask_bytes, img_output_bytes = color_remover.process(corrected_img_bytes, paths['extension'])
         logger.info("Finished Processing, and Start Uploading Image")
 
@@ -82,11 +94,16 @@ def processColor(full_url: str):
         logger.info("All finished Successfully")
         return JSONResponse(content={"message": "File processed successfully", "path": paths})
 
-    except Exception as pe:
-        logger.error("Error during processing: %s", pe)
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Missing key: {e.args[0]}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error("Error during processing: %s", e)
         raise HTTPException(status_code=500, detail="Error processing the image.")
 
-@app.get("/analysis/")
+
+@app.get("/analysis")
 async def analyzeProblem(problem_url: str):
     """ Curriculum-based Problem Analysis API with CLOVA OCR & ChatGPT  """
     import requests
@@ -144,29 +161,6 @@ async def analyzeProblem(problem_url: str):
         raise HTTPException(status_code=500, detail="Error during OCR.")
 
 
-@app.get("/scaling")
-def scaling(full_url: str):
-    logger.info("Processing scaling for URL: %s", full_url)
-    try:
-        s3_key = parse_s3_url(full_url)
-        paths = create_file_path(s3_key, s3_key.split(".")[-1])
-        img_bytes = download_image_from_s3(s3_key)  # download from S3
-        logger.info("Key is : %s and Start processing", s3_key)
-
-        color_remover = ColorRemover()
-        img_output_bytes = color_remover.scaling(img_bytes, 'jpg')
-        logger.info("Finished Scaling, and Start Uploading Image")
-
-        upload_image_to_s3(img_output_bytes, "images/scaled.jpg")
-
-        logger.info("All finished Successfully")
-        return JSONResponse(content={"message": "File processed successfully"})
-
-    except Exception as pe:
-        logger.error("Error during processing: %s", pe)
-        raise HTTPException(status_code=500, detail="Error processing the image.")
-
-
 @app.get("/show-url")
 def showByUrl(full_url: str):
     s3_key = parse_s3_url(full_url)
@@ -200,3 +194,26 @@ async def upload_directly(upload_file: UploadFile = File(...)):
 
     return {"message": f"File {upload_file.filename} uploaded successfully",
             "path": paths["input_path"]}
+
+
+@app.get("/scaling")
+def scaling(full_url: str):
+    logger.info("Processing scaling for URL: %s", full_url)
+    try:
+        s3_key = parse_s3_url(full_url)
+        paths = create_file_path(s3_key, s3_key.split(".")[-1])
+        img_bytes = download_image_from_s3(s3_key)  # download from S3
+        logger.info("Key is : %s and Start processing", s3_key)
+
+        color_remover = ColorRemover()
+        img_output_bytes = color_remover.scaling(img_bytes, 'jpg')
+        logger.info("Finished Scaling, and Start Uploading Image")
+
+        upload_image_to_s3(img_output_bytes, "images/scaled.jpg")
+
+        logger.info("All finished Successfully")
+        return JSONResponse(content={"message": "File processed successfully"})
+
+    except Exception as pe:
+        logger.error("Error during processing: %s", pe)
+        raise HTTPException(status_code=500, detail="Error processing the image.")
