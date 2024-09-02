@@ -223,7 +223,7 @@ class ColorRemover:
     def filtering(self, img_rgb):
         """ 이미지의 명암대비 강화 및 밝기 증가"""
 
-        alpha = 1.2  # 대비 계수
+        alpha = 1.3  # 대비 계수
         beta = 1.1  # 밝기 조절이 필요 없는 경우 0
         enhanced_contrast_image = cv2.convertScaleAbs(img_rgb, alpha=alpha, beta=beta)  # 대비가 강화된 이미지 생성
 
