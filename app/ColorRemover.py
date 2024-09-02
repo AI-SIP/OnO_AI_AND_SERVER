@@ -17,7 +17,7 @@ def rgb_to_hsv_list(rgb_list):
 
 
 class ColorRemover:
-    def __init__(self, target_rgb_list, tolerance=(20, 50, 20)):
+    def __init__(self, target_rgb_list, tolerance=(30, 150, 150)): # 팀 주정뱅이: 30, 150, 150
         self.size = 0
         self.height = 0
         self.width = 0
