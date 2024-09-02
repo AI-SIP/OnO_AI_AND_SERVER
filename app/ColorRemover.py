@@ -49,8 +49,8 @@ class ColorRemover:
         for target_hsv in self.target_hsv_list:
             logging.info("target_hsv: %s, tolerance: %s", target_hsv, self.tolerance)
             lower_bound = np.array([max(0, target_hsv[0] - self.tolerance[0]),
-                                    max(0, target_hsv[1] - self.tolerance[1]),
-                                    max(0, target_hsv[2] - self.tolerance[2])])
+                                    max(5, target_hsv[1] - self.tolerance[1]),
+                                    max(5, target_hsv[2] - self.tolerance[2])])
             upper_bound = np.array([min(179, target_hsv[0] + self.tolerance[0]),
                                     min(255, target_hsv[1] + self.tolerance[1]),
                                     min(255, target_hsv[2] + self.tolerance[2])])
