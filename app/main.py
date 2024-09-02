@@ -120,7 +120,8 @@ async def analyzeProblem(problem_url: str):
         extension = s3_key.split(".")[-1]
         logger.info("Completed Download & Sending Requests... '%s'", s3_key)
 
-        ssm = boto3.client('ssm')
+        ssm = boto3.client('ssm',
+                           region_name='ap-northeast-2')
         api_url = ssm.get_parameter(
             Name='/ono/dev/fastapi/CLOVA_API_URL',
             WithDecryption=False
@@ -129,6 +130,7 @@ async def analyzeProblem(problem_url: str):
             Name='/ono/dev/fastapi/CLOVA_SECRET_KEY',
             WithDecryption=False
         )['Parameter']['Value']
+
         image_file = ImageManager.correct_rotation(img_bytes, extension)  # rotating correction
 
         headers = {
