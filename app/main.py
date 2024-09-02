@@ -102,7 +102,8 @@ async def processColor(request: Request):
         logger.error("Error during processing: %s", e)
         raise HTTPException(status_code=500, detail="Error processing the image.")
 
-@app.get("/analysis/")
+
+@app.get("/analysis")
 async def analyzeProblem(problem_url: str):
     """ Curriculum-based Problem Analysis API with CLOVA OCR & ChatGPT  """
     import requests
