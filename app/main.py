@@ -1,4 +1,3 @@
-import os
 import io
 from uuid import uuid4
 from urllib.parse import urlparse
@@ -19,7 +18,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-s3_client = boto3.client('s3')
+
+#  클라이언트 생성
+s3_client = boto3.client( "s3",
+                          region_name="ap-northeast-2")
+ssm_client = boto3.client('ssm',
+                          region_name='ap-northeast-2')
+# s3 버킷 연결
 try:
     response = s3_client.list_buckets()
     BUCKET_NAME = response['Buckets'][0]['Name']  # 첫 번째 버킷의 이름
@@ -111,6 +116,43 @@ async def processColor(request: Request):
 @app.get("/analysis")
 async def analyzeProblem(problem_url: str):
     """ Curriculum-based Problem Analysis API with CLOVA OCR & ChatGPT  """
+@app.get("/show-url")
+def showByUrl(full_url: str):
+    s3_key = parse_s3_url(full_url)
+    try:
+        img_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=s3_key)
+        img_bytes = img_obj['Body'].read()
+        corrected_img_bytes = ImageManager.correct_rotation(img_bytes, s3_key.split(".")[-1])
+    except ClientError as ce:
+        error_code = ce.response['Error']['Code']
+        if error_code == 'NoSuchKey':
+            raise HTTPException(status_code=404, detail="File not found")
+        else:
+            raise HTTPException(status_code=500, detail=f"500 error")
+
+    return StreamingResponse(content=io.BytesIO(corrected_img_bytes), media_type="image/" + s3_key.split('.')[-1])
+
+
+@app.post("/direct/upload")
+async def upload_directly(upload_file: UploadFile = File(...)):
+    try:
+        if upload_file is None:
+            raise HTTPException(status_code=400, detail="No input file")
+        upload_file, extension = await ImageManager.validate_type(upload_file)
+        upload_file = await ImageManager.validate_size(upload_file)
+        paths = create_file_path('images/', extension)  # 경로 설정
+        s3_client.upload_fileobj(upload_file.file, BUCKET_NAME, paths["input_path"])
+    except Exception:
+        raise HTTPException(status_code=500, detail="File upload failed")
+    finally:
+        upload_file.file.close()
+
+    return {"message": f"File {upload_file.filename} uploaded successfully",
+            "path": paths["input_path"]}
+
+@app.get("/analysis/ocr")
+async def ocr(problem_url: str):
+    """ OCR with Naver Clova OCR API"""
     import requests
     import uuid
     import time
