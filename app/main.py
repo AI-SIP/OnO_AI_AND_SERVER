@@ -217,9 +217,8 @@ async def ocr(problem_url: str):
             for field in image["fields"]:
                 infer_texts.append(field["inferText"])
         result = ' '.join(infer_texts)
-        print(result)
 
-        return JSONResponse(content={"message": "OCR Finished Successfully", "result": result})
+        return result
 
     except Exception as pe:
         logger.error("Error during OCR: %s", pe)
@@ -345,13 +344,13 @@ async def insert_curriculum_embeddings():
                 # 텍스트 읽기
                 text = obj['Body'].read().decode('utf-8')
                 texts.append(text)
-        logging.info(f"* log >> read {len(texts)} texts from S3")
+        logger.info(f"* log >> read {len(texts)} texts from S3")
     except Exception as e:
-        logging.error(f"Error reading curriculum from S3: {e}")
+        logger.error(f"Error reading curriculum from S3: {e}")
 
     # 데이터 임베딩
     content_embeddings = get_embedding(openai_client, texts)
-    logging.info(f"* log >> embedding 완료. dimension: {DIMENSION}")
+    logger.info(f"* log >> embedding 완료. dimension: {DIMENSION}")
 
     # 데이터 삽입
     data = [
@@ -359,7 +358,7 @@ async def insert_curriculum_embeddings():
         content_embeddings  # content_embedding 필드
     ]
     status = collection.insert(data)
-    print(f"* log >> 데이터 삽입 완료")
+    logger.info(f"* log >> 데이터 삽입 완료")
     return {"status": status, "ids": status.primary_keys}
 
 
@@ -433,10 +432,10 @@ async def generate(question):
             )
             return gpt_response.choices[0].message.content
         except Exception as e:
-            print(f"Error during GPT querying: {e}")
+            logger.info(f"Error during GPT querying: {e}")
             return None
 
     chatgpt_response = get_chatgpt_response(openai_client, question)
-    logging.info(f"* log >> ChatGPT Response: {chatgpt_response}")
+    logger.info(f"* log >> ChatGPT Response: {chatgpt_response}")
     return chatgpt_response
 
