@@ -226,39 +226,22 @@ async def ocr(problem_url: str):
         raise HTTPException(status_code=500, detail="Error during OCR.")
 
 
-@app.get("/show-url")
-def showByUrl(full_url: str):
-    s3_key = parse_s3_url(full_url)
-    try:
-        img_obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=s3_key)
-        img_bytes = img_obj['Body'].read()
-        corrected_img_bytes = ImageManager.correct_rotation(img_bytes, s3_key.split(".")[-1])
-    except ClientError as ce:
-        error_code = ce.response['Error']['Code']
-        if error_code == 'NoSuchKey':
-            raise HTTPException(status_code=404, detail="File not found")
-        else:
-            raise HTTPException(status_code=500, detail=f"500 error")
-
-    return StreamingResponse(content=io.BytesIO(corrected_img_bytes), media_type="image/" + s3_key.split('.')[-1])
-
-
-@app.post("/direct/upload")
-async def upload_directly(upload_file: UploadFile = File(...)):
+@app.post("/upload/curriculum")
+async def upload_curriculum_txt(upload_file: UploadFile = File(...)):
+    extension = 'txt'
     try:
         if upload_file is None:
             raise HTTPException(status_code=400, detail="No input file")
-        upload_file, extension = await ImageManager.validate_type(upload_file)
-        upload_file = await ImageManager.validate_size(upload_file)
-        paths = create_file_path('images/', extension)  # 경로 설정
-        s3_client.upload_fileobj(upload_file.file, BUCKET_NAME, paths["input_path"])
+        path = f'curriculum/math2015/{upload_file.filename}.{extension}'  # 경로 설정
+        s3_client.upload_fileobj(upload_file.file, BUCKET_NAME, path)
     except Exception:
         raise HTTPException(status_code=500, detail="File upload failed")
     finally:
         upload_file.file.close()
-
+        logger.info(f"커리큘럼 {upload_file.filename}이 정상적으로 업로드되었습니다.")
     return {"message": f"File {upload_file.filename} uploaded successfully",
-            "path": paths["input_path"]}
+            "path": path}
+
 
 # OpenAI 연결
 openai_secret_key = ssm_client.get_parameter(
