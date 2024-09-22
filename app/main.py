@@ -176,21 +176,19 @@ async def ocr(problem_url: str):
         extension = s3_key.split(".")[-1]
         logger.info("Completed Download & Sending Requests... '%s'", s3_key)
 
-        ssm = boto3.client('ssm',
-                           region_name='ap-northeast-2')
-        api_url = ssm.get_parameter(
-            Name='/ono/dev/fastapi/CLOVA_API_URL',
+        clova_api_url = ssm_client.get_parameter(
+            Name='/ono/new_dev/fastapi/CLOVA_API_URL',
             WithDecryption=False
         )['Parameter']['Value']
-        secret_key = ssm.get_parameter(
-            Name='/ono/dev/fastapi/CLOVA_SECRET_KEY',
+        clova_secret_key = ssm_client.get_parameter(
+            Name='/ono/new_dev/fastapi/CLOVA_SECRET_KEY',
             WithDecryption=False
         )['Parameter']['Value']
 
         image_file = ImageManager.correct_rotation(img_bytes, extension)  # rotating correction
 
         headers = {
-            'X-OCR-SECRET': secret_key
+            'X-OCR-SECRET': clova_secret_key
         }
         request_json = {
             'images': [
@@ -210,7 +208,7 @@ async def ocr(problem_url: str):
         ]
         logger.info("Processing OCR & Receiving Responses...")
 
-        ocr_response = requests.request("POST", api_url, headers=headers, data=payload, files=files).text
+        ocr_response = requests.request("POST", clova_api_url, headers=headers, data=payload, files=files).text
         ocr_response_json = json.loads(ocr_response)
         logger.info("***** Finished Analyzing Successfully *****")
 
