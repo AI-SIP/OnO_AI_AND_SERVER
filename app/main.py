@@ -250,7 +250,10 @@ openai_secret_key = ssm_client.get_parameter(
 openai_client = OpenAI(api_key=openai_secret_key)
 
 # Mivlus DB 연결
-MILVUS_HOST = 'http://new-dev-an2-ono-alb-71707056.ap-northeast-2.elb.amazonaws.com'
+MILVUS_HOST = ssm_client.get_parameter(
+    Name='/ono/new_dev/fastapi/MILVUS_HOST_NAME',
+    WithDecryption=False
+)['Parameter']['Value']
 MILVUS_PORT = 19530
 DB_NAME = "ono_dev"
 COLLECTION_NAME = 'Math2015Curriculum'
