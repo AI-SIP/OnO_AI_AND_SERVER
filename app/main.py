@@ -210,7 +210,7 @@ async def ocr(problem_url: str):
 
         ocr_response = requests.request("POST", clova_api_url, headers=headers, data=payload, files=files).text
         ocr_response_json = json.loads(ocr_response)
-        logger.info("***** Finished Analyzing Successfully *****")
+        logger.info("***** Finished OCR Successfully *****")
 
         infer_texts = []
         for image in ocr_response_json["images"]:
@@ -250,7 +250,7 @@ openai_secret_key = ssm_client.get_parameter(
 openai_client = OpenAI(api_key=openai_secret_key)
 
 # Mivlus DB 연결
-MILVUS_HOST = 'localhost'
+MILVUS_HOST = 'http://new-dev-an2-ono-alb-71707056.ap-northeast-2.elb.amazonaws.com'
 MILVUS_PORT = 19530
 DB_NAME = "ono_dev"
 COLLECTION_NAME = 'Math2015Curriculum'
