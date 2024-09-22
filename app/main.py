@@ -11,6 +11,9 @@ from ColorRemover import ColorRemover
 import ImageFunctions as ImageManager
 import logging
 
+from openai import OpenAI
+from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection
+
 # 로깅 추가
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
