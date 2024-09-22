@@ -206,25 +206,200 @@ async def upload_directly(upload_file: UploadFile = File(...)):
     return {"message": f"File {upload_file.filename} uploaded successfully",
             "path": paths["input_path"]}
 
+# OpenAI 연결
+openai_secret_key = ssm_client.get_parameter(
+    Name='/ono/new_dev/fastapi/OPENAI_API_KEY',
+    WithDecryption=False
+)['Parameter']['Value']
+openai_client = OpenAI(api_key=openai_secret_key)
 
-@app.get("/scaling")
-def scaling(full_url: str):
-    logger.info("Processing scaling for URL: %s", full_url)
+# Mivlus DB 연결
+MILVUS_HOST = 'localhost'
+MILVUS_PORT = 19530
+DB_NAME = "ono_dev"
+COLLECTION_NAME = 'Math2015Curriculum'
+DIMENSION = 1536
+INDEX_TYPE = "IVF_FLAT"
+
+@app.get("/milvus/connect")
+async def connect_milvus():
+    # Milvus 서버 연결
+    connections.connect(host=MILVUS_HOST, port=MILVUS_PORT, db_name=DB_NAME)
+    logger.info(f"* log >> Milvus Server is connected to {MILVUS_HOST}:{MILVUS_PORT}")
+
+    # 컬렉션의 스키마 출력
+    collection = Collection(COLLECTION_NAME)
+    logger.info("* Collection Schema:")
+    for field in collection.schema.fields:
+        logger.info(f"    - Field Name: {field.name}, Data Type #: {field.dtype}")
+
+
+@app.get("/milvus/create")
+async def create_milvus():
+    await connect_milvus()  # milvus 서버 연결
+
+    # 스키마 및 컬렉션 생성
+    fields = [
+        FieldSchema(name='id', dtype=DataType.INT64, is_primary=True, auto_id=True),
+        FieldSchema(name='content', dtype=DataType.VARCHAR, max_length=65535),
+        FieldSchema(name='content_embedding', dtype=DataType.FLOAT_VECTOR, dim=DIMENSION),
+    ]
+    schema = CollectionSchema(fields=fields, description='Math2015Curriculum embedding collection')
+    collection = Collection(name=COLLECTION_NAME, schema=schema)
+    logger.info(f"* log >> Collection [{COLLECTION_NAME}] is created.")
+
+    # 인덱스 생성
+    # 스칼라 인덱스
+    collection.create_index(
+        field_name="id"
+    )
+    # 벡터 인덱스
+    index_params = {
+        'index_type': INDEX_TYPE,
+        'metric_type': 'COSINE',
+        'params': {
+            'nlist': 128
+        }
+    }
+    collection.create_index(
+        field_name="content_embedding",
+        index_params=index_params
+    )
+    logger.info(f"* log >> 인덱스 생성 결과: {[idx.index_name for idx in collection.indexes]}")  # True
+
+    # 컬렉션의 스키마 출력
+    collection = Collection(COLLECTION_NAME)
+    logger.info("* Collection Schema:")
+    for field in collection.schema.fields:
+        logger.info(f"    - Field Name: {field.name}, Data Type #: {field.dtype}")
+
+
+def get_embedding(client, text_list):
     try:
-        s3_key = parse_s3_url(full_url)
-        paths = create_file_path(s3_key, s3_key.split(".")[-1])
-        img_bytes = download_image_from_s3(s3_key)  # download from S3
-        logger.info("Key is : %s and Start processing", s3_key)
+        embedding_response = client.embeddings.create(
+            input=text_list,  # 배열 input
+            model="text-embedding-3-small"
+        )
+        vectors = [d.embedding for d in embedding_response.data]
+        return vectors
+    except Exception as e:
+        logger.info(f"임베딩 생성 중 오류 발생: {e}")
+        return [None] * len(text_list)
 
-        color_remover = ColorRemover()
-        img_output_bytes = color_remover.scaling(img_bytes, 'jpg')
-        logger.info("Finished Scaling, and Start Uploading Image")
 
-        upload_image_to_s3(img_output_bytes, "images/scaled.jpg")
+@app.get("/milvus/insert")
+async def insert_curriculum_embeddings():
+    """ s3에서 교과과정을 읽고 임베딩하여 Milvus에 삽입 """
+    # Milvus 연결
+    await connect_milvus()
+    collection = Collection(COLLECTION_NAME)
 
-        logger.info("All finished Successfully")
-        return JSONResponse(content={"message": "File processed successfully"})
+    # S3 내 커리큘럼 데이터 로드
+    texts = []
+    prefix = 'curriculum/math2015/'  # 경로
+    try:
+        # 버킷에서 파일 목록 가져오기
+        s3_curriculum_response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
+        for item in s3_curriculum_response.get('Contents', []):
+            s3_key = item['Key']
+            if s3_key.endswith('.txt'):
+                # S3 객체 가져오기
+                obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=s3_key)
+                # 텍스트 읽기
+                text = obj['Body'].read().decode('utf-8')
+                texts.append(text)
+        logging.info(f"* log >> read {len(texts)} texts from S3")
+    except Exception as e:
+        logging.error(f"Error reading curriculum from S3: {e}")
 
-    except Exception as pe:
-        logger.error("Error during processing: %s", pe)
-        raise HTTPException(status_code=500, detail="Error processing the image.")
+    # 데이터 임베딩
+    content_embeddings = get_embedding(openai_client, texts)
+    logging.info(f"* log >> embedding 완료. dimension: {DIMENSION}")
+
+    # 데이터 삽입
+    data = [
+        texts,  # content 필드
+        content_embeddings  # content_embedding 필드
+    ]
+    status = collection.insert(data)
+    print(f"* log >> 데이터 삽입 완료")
+    return {"status": status, "ids": status.primary_keys}
+
+
+@app.get("/analysis/retrieve")
+async def retrieve(problem_text: str):
+    try:
+        # Milvus 연결
+        await connect_milvus()
+
+        # 컬렉션의 스키마 출력
+        collection = Collection(COLLECTION_NAME)
+        logger.info("* Collection Schema:")
+        for field in collection.schema.fields:
+            logger.info(f"    - Field Name: {field.name}, Data Type #: {field.dtype}")
+
+        # 검색 테스트
+        query = problem_text
+        query_embeddings = [get_embedding(openai_client, [query])]
+        if not query_embeddings or query_embeddings[0] is None:
+            raise ValueError("Embedding generation failed")
+        logger.info(f"* log >> Query embedding 완료")
+
+        search_params = {
+            'metric_type': 'COSINE',
+            'params': {
+                'probe': 20
+            },
+        }
+        results = collection.search(
+            data=query_embeddings[0],
+            anns_field='content_embedding',
+            param=search_params,
+            limit=3,
+            expr=None,
+            output_fields=['content']
+        )
+        context = ' '.join([result.entity.get('content') for result in results[0]])
+        logger.info(f"* log >> context found")
+
+        # 결과 확인
+        '''logger.info(f"* log >> 쿼리 결과")
+        for result in results[0]:
+            logger.info("\n-------------------------------------------------------------------")
+            logger.info(f"Score : {result.distance}, \nText : \n{result.entity.get('content')}")'''
+
+        return context
+    except Exception as e:
+        logger.error(f"Error in search: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/analysis/augmentation")
+async def augment(curriculum_context, query):
+    prompt = "교과과정에 기반하여 이 문제에 필요한 개념을 말해줘. 응답은 자연어처럼 제공해줘. \n"
+    context = curriculum_context
+    passage = query
+    augmented_query = prompt + context+ passage
+    return augmented_query
+
+@app.get("/analysis/generation")
+async def generate(question):
+    def get_chatgpt_response(client, question, model="gpt-4o-mini"):
+        try:
+            gpt_response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "user",
+                     "content": question
+                     }
+                ],
+                temperature=0.5
+            )
+            return gpt_response.choices[0].message.content
+        except Exception as e:
+            print(f"Error during GPT querying: {e}")
+            return None
+
+    chatgpt_response = get_chatgpt_response(openai_client, question)
+    logging.info(f"* log >> ChatGPT Response: {chatgpt_response}")
+    return chatgpt_response
+
