@@ -63,10 +63,12 @@ jobs:
           script: |
             pwd  # Debugging check
             ls  # Debugging check
-            ssh -o StrictHostKeyChecking=no -i new-dev-an2-ono-fastapi-key.pem ubuntu@${{ secrets.DEV_FASTAPI_SERVER_IP }} << 'EOSSH'
-              aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin $ECR_REGISTRY
-              docker pull $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+            ssh -o StrictHostKeyChecking=no -i new-dev-an2-ono-fastapi-key.pem ubuntu@${{ secrets.DEV_FASTAPI_SERVER_IP }} << 'EOSSH'   
+              export CONTAINER_NAME=fastapi_new_dev_container
+              export ECR_REPOSITORY=fastapi/new_dev
+              aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin ${{secrets.ECR_REGISTRY}}
+              docker pull ${{secrets.ECR_REGISTRY}}/$ECR_REPOSITORY:${{ github.sha }}
               docker stop $CONTAINER_NAME || true
               docker rm $CONTAINER_NAME || true
-              docker run -d --name $CONTAINER_NAME -p 8000:8000 --restart always $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+              docker run -d --name $CONTAINER_NAME -p 8000:8000 --restart always ${{secrets.ECR_REGISTRY}}/$ECR_REPOSITORY:${{ github.sha }}
             EOSSH
