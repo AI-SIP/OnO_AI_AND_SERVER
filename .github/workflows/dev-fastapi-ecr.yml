@@ -9,7 +9,8 @@ jobs:
   build-and-push:
     name: Build and Push Docker image to ECR
     runs-on: ubuntu-latest
-
+    outputs:
+      ecr_registry: ${{ steps.login-ecr.outputs.registry }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -31,14 +32,13 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: fastapi/new_dev
-          IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
 
       - name: Output the image URI
         run: |
-          echo "Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
 
   deploy-to-ec2:
     name: Deploy to EC2
@@ -46,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CONTAINER_NAME: fastapi_new_dev_container
+      ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr_registry }}
+      ECR_REPOSITORY: fastapi/new_dev
     steps:
       - name: Deploy Docker image to EC2
         uses: appleboy/ssh-action@master
@@ -57,9 +59,9 @@ jobs:
             pwd  # Debugging check
             ls  # Debugging check
             ssh -o StrictHostKeyChecking=no -i new-dev-an2-ono-fastapi-key.pem ubuntu@${{ secrets.DEV_FASTAPI_SERVER_IP }} << 'EOSSH'
-              aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin ${{ secrets.ECR_REGISTRY }}
-              docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+              aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin $ECR_REGISTRY
+              docker pull $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
               docker stop $CONTAINER_NAME || true
               docker rm $CONTAINER_NAME || true
-              docker run -d --name $CONTAINER_NAME -p 8000:8000 --restart always $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+              docker run -d --name $CONTAINER_NAME -p 8000:8000 --restart always $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
             EOSSH
