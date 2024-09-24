@@ -11,7 +11,7 @@ import ImageFunctions as ImageManager
 import logging
 
 from openai import OpenAI
-from pymilvus import connections, FieldSchema, CollectionSchema, DataType, Collection
+from pymilvus import connections, utility, FieldSchema, CollectionSchema, DataType, Collection
 
 # 로깅 추가
 logging.basicConfig(level=logging.INFO)
@@ -262,15 +262,22 @@ INDEX_TYPE = "IVF_FLAT"
 
 @app.get("/milvus/connect")
 async def connect_milvus():
-    # Milvus 서버 연결
-    connections.connect(host=MILVUS_HOST, port=MILVUS_PORT, db_name=DB_NAME)
-    logger.info(f"* log >> Milvus Server is connected to {MILVUS_HOST}:{MILVUS_PORT}")
+    try:
+        # Milvus 서버 연결
+        connections.connect(alias="default", host=MILVUS_HOST, port=MILVUS_PORT)
+        logger.info(f"* log >> Milvus Server is connected to {MILVUS_HOST}:{MILVUS_PORT}")
 
-    # 컬렉션의 스키마 출력
-    collection = Collection(COLLECTION_NAME)
-    logger.info("* Collection Schema:")
-    for field in collection.schema.fields:
-        logger.info(f"    - Field Name: {field.name}, Data Type #: {field.dtype}")
+        # 컬렉션의 스키마 출력
+        if utility.has_collection(COLLECTION_NAME):
+            collection = Collection(COLLECTION_NAME)
+            logger.info("* Collection Schema:")
+            for field in collection.schema.fields:
+                logger.info(f"    - Field Name: {field.name}, Data Type #: {field.dtype}")
+
+    except Exception as e:
+        logger.error(f"Failed to connect to Milvus server: {str(e)}")
+
+
 
 
 @app.get("/milvus/create")
