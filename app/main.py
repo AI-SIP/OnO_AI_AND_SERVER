@@ -255,10 +255,10 @@ MILVUS_HOST = ssm_client.get_parameter(
     WithDecryption=False
 )['Parameter']['Value']
 MILVUS_PORT = 19530
-DB_NAME = "ono_dev"
 COLLECTION_NAME = 'Math2015Curriculum'
 DIMENSION = 1536
 INDEX_TYPE = "IVF_FLAT"
+
 
 @app.get("/milvus/connect")
 async def connect_milvus():
@@ -424,7 +424,7 @@ async def augment(curriculum_context, query):
     prompt = "교과과정에 기반하여 이 문제에 필요한 개념을 말해줘. 응답은 자연어처럼 제공해줘. \n"
     context = curriculum_context
     passage = query
-    augmented_query = prompt + context+ passage
+    augmented_query = prompt + context + passage
     return augmented_query
 
 @app.get("/analysis/generation")
