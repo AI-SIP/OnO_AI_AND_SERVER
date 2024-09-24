@@ -49,6 +49,11 @@ jobs:
       ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr_registry }}
       ECR_REPOSITORY: fastapi/new_dev
     steps:
+      - name: Check Env value
+        run:
+          echo $ECR_REGISTRY
+          echo $CONTAINER_NAME
+          echo $ECR_REPOSITORY
       - name: Deploy Docker image to EC2
         uses: appleboy/ssh-action@master
         with:
