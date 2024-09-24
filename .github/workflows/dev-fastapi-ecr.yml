@@ -54,11 +54,10 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.DEV_BASTION_SSH_PRIVATE_KEY }}
           script: |
-            chmod 400 /home/ubuntu/new-dev-an2-ono-fastapi-key.pem
-            ssh -o StrictHostKeyChecking=no -i /home/ubuntu/new-dev-an2-ono-fastapi-key.pem ubuntu@${{ secrets.DEV_FASTAPI_SERVER_IP }} << 'EOSSH'
-              docker login -u AWS -p $(aws ecr get-login-password --region ap-northeast-2) $ECR_REGISTRY
             pwd  # Debugging
             ls  # Debugging
+            ssh -o StrictHostKeyChecking=no -i new-dev-an2-ono-fastapi-key.pem ubuntu@${{ secrets.DEV_FASTAPI_SERVER_IP }} << 'EOSSH'
+              aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin $ECR_REGISTRY
               docker pull $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
               docker stop $CONTAINER_NAME || true
               docker rm $CONTAINER_NAME || true
