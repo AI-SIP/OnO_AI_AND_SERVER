@@ -1,4 +1,4 @@
-name: Deploy to Amazon ECR
+name: CI/CD of Develop branch to Dev Server
 
 on:
   push:
