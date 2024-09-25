@@ -50,8 +50,8 @@ jobs:
       ECR_REPOSITORY: fastapi/prd
     steps:
       - name: Check Env value
-        run:
-          echo $ECR_REGISTRY # Debugging
+        run: |
+          echo $ECR_REGISTRY
           echo $CONTAINER_NAME
           echo $ECR_REPOSITORY
       - name: Deploy Docker image to EC2
