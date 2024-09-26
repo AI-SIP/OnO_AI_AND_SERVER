@@ -274,7 +274,7 @@ async def connect_milvus():
         # 컬렉션의 스키마 출력
         if utility.has_collection(COLLECTION_NAME):
             collection = Collection(COLLECTION_NAME)
-            logger.info("* Collection Schema:")
+            logger.info("* 존재하는 Collection Schema:")
             for field in collection.schema.fields:
                 logger.info(f"    - Field Name: {field.name}, Data Type #: {field.dtype}")
 
@@ -319,7 +319,7 @@ async def create_milvus():
 
     # 컬렉션의 스키마 출력
     collection = Collection(COLLECTION_NAME)
-    logger.info("* Collection Schema:")
+    logger.info("* 생성할 Collection Schema:")
     for field in collection.schema.fields:
         logger.info(f"    - Field Name: {field.name}, Data Type #: {field.dtype}")
 
