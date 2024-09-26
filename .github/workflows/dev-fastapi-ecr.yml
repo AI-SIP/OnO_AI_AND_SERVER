@@ -1,0 +1,74 @@
+name: CI/CD of Develop branch to Dev Server
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  build-and-push:
+    name: Build and Push Docker image to ECR
+    runs-on: ubuntu-latest
+    outputs:
+      ecr_registry: ${{ steps.login-ecr.outputs.registry }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: 'false'
+
+      - name: Build, tag, and push docker image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: fastapi/new_dev
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }} .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}
+
+      - name: Output the image URI
+        run: |
+          echo "Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.sha }}"
+
+  deploy-to-ec2:
+    name: Deploy to EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    env:
+      CONTAINER_NAME: fastapi_new_dev_container
+      ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr_registry }}
+      ECR_REPOSITORY: fastapi/new_dev
+    steps:
+      - name: Check Env value
+        run:
+          echo $ECR_REGISTRY
+          echo $CONTAINER_NAME
+          echo $ECR_REPOSITORY
+      - name: Deploy Docker image to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEV_BASTION_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.DEV_BASTION_SSH_PRIVATE_KEY }}
+          script: |
+            pwd  # Debugging check
+            ls  # Debugging check
+            ssh -o StrictHostKeyChecking=no -i new-dev-an2-ono-fastapi-key.pem ubuntu@${{ secrets.DEV_FASTAPI_SERVER_IP }} << 'EOSSH'   
+              export CONTAINER_NAME=fastapi_new_dev_container
+              export ECR_REPOSITORY=fastapi/new_dev
+              aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin ${{secrets.ECR_REGISTRY}}
+              docker pull ${{secrets.ECR_REGISTRY}}/$ECR_REPOSITORY:${{ github.sha }}
+              docker stop $CONTAINER_NAME || true
+              docker rm $CONTAINER_NAME || true
+              docker run -d --name $CONTAINER_NAME -p 8000:8000 --restart always ${{secrets.ECR_REGISTRY}}/$ECR_REPOSITORY:${{ github.sha }}
+            EOSSH
