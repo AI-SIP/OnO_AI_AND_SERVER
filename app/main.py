@@ -151,8 +151,12 @@ async def upload_directly(upload_file: UploadFile = File(...)):
 @app.get("/analysis/whole")
 async def analysis(problem_url = None):
     """ Curriculum-based Chat Completion API with CLOVA OCR & ChatGPT  """
-    problem_text = await ocr(problem_url)
-    # problem_text = "확률변수 X는 평균이 m, 표준편차가 5인 정규분포를 따르고, 확률변수 X의 확률밀도함수 f(x)가 다음 조건을 만족시킨다. m이 자연수일 때 P(17<=X<=18)=a이다. 1000a의 값을 오른쪽 표준정규분포표를 이용하여 구하시오."
+    await connect_milvus()  # milvus 서버 연결
+
+    if problem_url is None:
+        problem_text = "확률변수 X는 평균이 m, 표준편차가 5인 정규분포를 따르고, 확률변수 X의 확률밀도함수 f(x)가 다음 조건을 만족시킨다. m이 자연수일 때 P(17<=X<=18)=a이다. 1000a의 값을 오른쪽 표준정규분포표를 이용하여 구하시오."
+    else:
+        problem_text = await ocr(problem_url)
 
     retrieving_result = await retrieve(problem_text)
     question = await augment(retrieving_result, problem_text)
