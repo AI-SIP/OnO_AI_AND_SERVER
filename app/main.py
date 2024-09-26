@@ -113,7 +113,7 @@ async def processColor(request: Request):
         raise HTTPException(status_code=500, detail="Error processing the image.")
 
 
-@app.get("/show-url")
+@app.get("/show/image")
 def showByUrl(full_url: str):
     s3_key = parse_s3_url(full_url)
     try:
@@ -130,7 +130,7 @@ def showByUrl(full_url: str):
     return StreamingResponse(content=io.BytesIO(corrected_img_bytes), media_type="image/" + s3_key.split('.')[-1])
 
 
-@app.post("/direct/upload")
+@app.post("/upload/image")
 async def upload_directly(upload_file: UploadFile = File(...)):
     try:
         if upload_file is None:
