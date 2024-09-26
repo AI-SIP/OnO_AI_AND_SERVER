@@ -379,14 +379,7 @@ async def insert_curriculum_embeddings():
 @app.get("/analysis/retrieve")
 async def retrieve(problem_text: str):
     try:
-        # Milvus 연결
-        await connect_milvus()
 
-        # 컬렉션의 스키마 출력
-        collection = Collection(COLLECTION_NAME)
-        logger.info("* Collection Schema:")
-        for field in collection.schema.fields:
-            logger.info(f"    - Field Name: {field.name}, Data Type #: {field.dtype}")
 
         # 검색 테스트
         query = problem_text
