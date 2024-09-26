@@ -379,7 +379,9 @@ async def insert_curriculum_embeddings():
 @app.get("/analysis/retrieve")
 async def retrieve(problem_text: str):
     try:
-
+        # collection을 메모리에 로드
+        collection = Collection(COLLECTION_NAME)
+        collection.load()
 
         # 검색 테스트
         query = problem_text
