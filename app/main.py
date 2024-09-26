@@ -371,9 +371,10 @@ async def insert_curriculum_embeddings():
         texts,  # content 필드
         content_embeddings  # content_embedding 필드
     ]
-    status = collection.insert(data)
+    collection.insert(data)
+
     logger.info(f"* log >> 데이터 삽입 완료")
-    return {"status": status, "ids": status.primary_keys}
+    return {"message": f"Curriculum inserted successfully"}
 
 
 @app.get("/analysis/retrieve")
