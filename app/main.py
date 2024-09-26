@@ -24,8 +24,6 @@ s3_client = boto3.client( "s3",
                           region_name="ap-northeast-2")
 ssm_client = boto3.client('ssm',
                           region_name='ap-northeast-2')
-SERVER = os.getenv('SERVER')
-logger.info(f"* log >> 환경변수 SERVER: {SERVER}로 받아왔습니다.")
 
 # s3 버킷 연결
 try:
@@ -184,11 +182,11 @@ async def ocr(problem_url: str):
         logger.info("Completed Download & Sending Requests... '%s'", s3_key)
 
         clova_api_url = ssm_client.get_parameter(
-            Name=f'/ono/{SERVER}/fastapi/CLOVA_API_URL',
+            Name='/ono/fastapi/CLOVA_API_URL',
             WithDecryption=False
         )['Parameter']['Value']
         clova_secret_key = ssm_client.get_parameter(
-            Name=f'/ono/{SERVER}/fastapi/CLOVA_SECRET_KEY',
+            Name='/ono/fastapi/CLOVA_SECRET_KEY',
             WithDecryption=False
         )['Parameter']['Value']
 
@@ -251,12 +249,15 @@ async def upload_curriculum_txt(upload_file: UploadFile = File(...)):
 
 # OpenAI 연결
 openai_secret_key = ssm_client.get_parameter(
-    Name=f'/ono/{SERVER}/fastapi/OPENAI_API_KEY',
+    Name='/ono/fastapi/OPENAI_API_KEY',
     WithDecryption=False
 )['Parameter']['Value']
 openai_client = OpenAI(api_key=openai_secret_key)
 
 # Mivlus DB 연결
+SERVER = os.getenv('SERVER')
+logger.info(f"* log >> 환경변수 SERVER: {SERVER}로 받아왔습니다.")
+
 MILVUS_HOST = ssm_client.get_parameter(
     Name=f'/ono/{SERVER}/fastapi/MILVUS_HOST_NAME',
     WithDecryption=False
