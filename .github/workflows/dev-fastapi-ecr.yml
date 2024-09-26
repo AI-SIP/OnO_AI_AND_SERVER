@@ -70,5 +70,5 @@ jobs:
               docker pull ${{secrets.ECR_REGISTRY}}/$ECR_REPOSITORY:${{ github.sha }}
               docker stop $CONTAINER_NAME || true
               docker rm $CONTAINER_NAME || true
-              docker run -d --name $CONTAINER_NAME -p 8000:8000 --restart always ${{secrets.ECR_REGISTRY}}/$ECR_REPOSITORY:${{ github.sha }}
+              docker run -d --name $CONTAINER_NAME -p 8000:8000 --env-file .env --restart always ${{secrets.ECR_REGISTRY}}/$ECR_REPOSITORY:${{ github.sha }}
             EOSSH
