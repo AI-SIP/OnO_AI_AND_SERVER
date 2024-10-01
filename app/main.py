@@ -350,7 +350,7 @@ async def insert_curriculum_embeddings():
 
     # S3 내 커리큘럼 데이터 로드
     texts = []
-    prefix = 'curriculum/math2015/'  # 경로
+    prefix = 'curriculum/science2015/'  # 경로
     try:
         # 버킷에서 파일 목록 가져오기
         s3_curriculum_response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
