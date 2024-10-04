@@ -347,7 +347,7 @@ def get_embedding(client, text_list):
 
 
 @app.get("/milvus/insert")
-async def insert_curriculum_embeddings():
+async def insert_curriculum_embeddings(subject: str):
     """ s3에서 교과과정을 읽고 임베딩하여 Milvus에 삽입 """
     # Milvus 연결
     await connect_milvus()
@@ -356,6 +356,7 @@ async def insert_curriculum_embeddings():
     # S3 내 커리큘럼 데이터 로드
     texts = []
     prefix = 'curriculum/science2015/'  # 경로
+    prefix = f'curriculum/{subject}2015/'  # 경로
     try:
         # 버킷에서 파일 목록 가져오기
         s3_curriculum_response = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix=prefix)
