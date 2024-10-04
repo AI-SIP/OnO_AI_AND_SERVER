@@ -161,11 +161,15 @@ async def analysis(problem_url=None):
     else:
         problem_text = await ocr(problem_url)
 
-    retrieving_result = await retrieve(problem_text)
+    retrieving_result, subjects, units, concepts = await retrieve(problem_text)
     question = await augment(retrieving_result, problem_text)
     answer = await generate(question)
 
-    return JSONResponse(content={"message": "Problem Analysis Finished Successfully", "answer": answer})
+    return JSONResponse(content={"message": "Problem Analysis Finished Successfully",
+                                 "subject": list(set(subjects)),
+                                 "unit": list(set(units)),
+                                 "key_concept": list(set(concepts)),
+                                 "answer": answer})
 
 
 @app.get("/analysis/ocr")
@@ -266,7 +270,7 @@ MILVUS_HOST = ssm_client.get_parameter(
     WithDecryption=False
 )['Parameter']['Value']
 MILVUS_PORT = 19530
-COLLECTION_NAME = 'Math2015Curriculum'
+COLLECTION_NAME = 'Curriculum2015'
 DIMENSION = 1536
 INDEX_TYPE = "IVF_FLAT"
 
@@ -302,8 +306,11 @@ async def create_milvus():
         FieldSchema(name='id', dtype=DataType.INT64, is_primary=True, auto_id=True),
         FieldSchema(name='content', dtype=DataType.VARCHAR, max_length=65535),
         FieldSchema(name='content_embedding', dtype=DataType.FLOAT_VECTOR, dim=DIMENSION),
+        FieldSchema(name='subject_name', dtype=DataType.VARCHAR, max_length=100),  # Meta Data1
+        FieldSchema(name='unit_name', dtype=DataType.VARCHAR, max_length=100),  # Meta Data2
+        FieldSchema(name='main_concept', dtype=DataType.VARCHAR, max_length=100),  # Meta Data3
     ]
-    schema = CollectionSchema(fields=fields, description='Math2015Curriculum embedding collection')
+    schema = CollectionSchema(fields=fields, description='2015 Korean High School Curriculum Collection')
     collection = Collection(name=COLLECTION_NAME, schema=schema)
     logger.info(f"* log >> Collection [{COLLECTION_NAME}] is created.")
 
@@ -365,7 +372,18 @@ async def insert_curriculum_embeddings(subject: str):
                 # S3 객체 가져오기
                 obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=s3_key)
                 # 텍스트 읽기
-                text = obj['Body'].read().decode('utf-8')
+                data = obj['Body'].read().decode('utf-8')
+                lines = data.splitlines()
+                # 메타 데이터 추출
+                meatdata_lines = [line.strip('#').strip() for line in lines[:3]]
+                subject_name = meatdata_lines[0]
+                subject_names.append(subject_name)
+                unit_name = meatdata_lines[1]
+                unit_names.append(unit_name)
+                main_concept = meatdata_lines[2]
+                main_concepts.append(main_concept)
+                # 교과과정 내용 추출
+                text = '\n'.join(lines[3:]).strip()
                 texts.append(text)
         logger.info(f"* log >> read {len(texts)} texts from S3")
     except Exception as e:
@@ -378,7 +396,10 @@ async def insert_curriculum_embeddings(subject: str):
     # 데이터 삽입
     data = [
         texts,  # content 필드
-        content_embeddings  # content_embedding 필드
+        content_embeddings,  # content_embedding 필드
+        subject_names,  # subject_name 필드
+        unit_names,  # unit_name 필드
+        main_concepts  # main_concept 필드
     ]
     collection.insert(data)
 
@@ -415,23 +436,21 @@ async def retrieve(problem_text: str):
             param=search_params,
             limit=3,
             expr=None,
-            output_fields=['content']
+            output_fields=['content', 'subject_name', 'unit_name', 'main_concept']
         )
         dt6 = str(datetime.fromtimestamp(time.time()))
         context = ' '.join([result.entity.get('content') for result in results[0]])
         logger.info(f"{dt5} ~ {dt6}: 검색 완료")
         logs = ""
         for result in results[0]:
-            logs += ("\n"+f"Score : {result.distance}, \nText : {result.entity.get('content')}"+"\n\n")
+            logs += ("\n"+f"Score : {result.distance}, \
+            \nInfo: {result.entity.get('subject_name')}\
+             > {result.entity.get('unit_name')}\
+            > {result.entity.get('main_concept')}, \
+            \nText : {result.entity.get('content')}"+"\n\n")
         logger.info(f"* log >> 검색 결과: {logs}")
 
-        # 결과 확인
-        '''logger.info(f"* log >> 쿼리 결과")
-        for result in results[0]:
-            logger.info("\n-------------------------------------------------------------------")
-            logger.info(f"Score : {result.distance}, \nText : {result.entity.get('content')}")'''
-
-        return context
+        return context, subjects_list, unit_list, main_concept_list
     except Exception as e:
         logger.error(f"Error in search: {e}")
         raise HTTPException(status_code=500, detail=str(e))
