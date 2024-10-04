@@ -12,6 +12,8 @@ import logging
 import os
 from openai import OpenAI
 from pymilvus import connections, utility, FieldSchema, CollectionSchema, DataType, Collection
+import time
+from datetime import datetime
 
 # 로깅 추가
 logging.basicConfig(level=logging.INFO)
@@ -150,7 +152,7 @@ async def upload_directly(upload_file: UploadFile = File(...)):
 
 
 @app.get("/analysis/whole")
-async def analysis(problem_url = None):
+async def analysis(problem_url=None):
     """ Curriculum-based Chat Completion API with CLOVA OCR & ChatGPT  """
     await connect_milvus()  # milvus 서버 연결
 
@@ -174,12 +176,13 @@ async def ocr(problem_url: str):
     import time
     import json
 
-    logger.info("Analyzing problem from this image URL: %s", problem_url)
     try:
+        dt3 = datetime.fromtimestamp(time.time())
         s3_key = parse_s3_url(problem_url)
         img_bytes = download_image_from_s3(s3_key)  # download from S3
         extension = s3_key.split(".")[-1]
-        logger.info("Completed Download & Sending Requests... '%s'", s3_key)
+        dt4 = datetime.fromtimestamp(time.time())
+        logger.info(f"{dt3}~{dt4}: 이미지 다운로드 완료")
 
         clova_api_url = ssm_client.get_parameter(
             Name='/ono/fastapi/CLOVA_API_URL',
@@ -211,18 +214,18 @@ async def ocr(problem_url: str):
         files = [
             ('file', image_file)
         ]
-        logger.info("Processing OCR & Receiving Responses...")
 
+        dt3 = datetime.fromtimestamp(time.time())
         ocr_response = requests.request("POST", clova_api_url, headers=headers, data=payload, files=files).text
         ocr_response_json = json.loads(ocr_response)
-        logger.info("***** Finished OCR Successfully *****")
+        dt4 = datetime.fromtimestamp(time.time())
+        logger.info(f"{dt3}~{dt4}: 이미지 OCR 완료")
 
         infer_texts = []
         for image in ocr_response_json["images"]:
             for field in image["fields"]:
                 infer_texts.append(field["inferText"])
         result = ' '.join(infer_texts)
-
         return result
 
     except Exception as pe:
@@ -272,8 +275,10 @@ INDEX_TYPE = "IVF_FLAT"
 async def connect_milvus():
     try:
         # Milvus 서버 연결
+        dt1 = str(datetime.fromtimestamp(time.time()))
         connections.connect(alias="default", host=MILVUS_HOST, port=MILVUS_PORT)
-        logger.info(f"* log >> Milvus Server is connected to {MILVUS_HOST}:{MILVUS_PORT}")
+        dt2 = str(datetime.fromtimestamp(time.time()))
+        logger.info(f"{dt1} ~ {dt2}: Milvus 서버 {MILVUS_HOST}:{MILVUS_PORT}에 연결 완료")
 
         # 컬렉션의 스키마 출력
         if utility.has_collection(COLLECTION_NAME):
@@ -390,10 +395,12 @@ async def retrieve(problem_text: str):
 
         # 검색 테스트
         query = problem_text
+        dt5 = str(datetime.fromtimestamp(time.time()))
         query_embeddings = [get_embedding(openai_client, [query])]
         if not query_embeddings or query_embeddings[0] is None:
             raise ValueError("Embedding generation failed")
-        logger.info(f"* log >> Query embedding 완료")
+        dt6 = str(datetime.fromtimestamp(time.time()))
+        logger.info(f"{dt5} ~ {dt6}: 쿼리 임베딩 완료")
 
         search_params = {
             'metric_type': 'COSINE',
@@ -401,6 +408,7 @@ async def retrieve(problem_text: str):
                 'probe': 20
             },
         }
+        dt5 = str(datetime.fromtimestamp(time.time()))
         results = collection.search(
             data=query_embeddings[0],
             anns_field='content_embedding',
@@ -409,14 +417,19 @@ async def retrieve(problem_text: str):
             expr=None,
             output_fields=['content']
         )
+        dt6 = str(datetime.fromtimestamp(time.time()))
         context = ' '.join([result.entity.get('content') for result in results[0]])
-        logger.info(f"* log >> context found")
+        logger.info(f"{dt5} ~ {dt6}: 검색 완료")
+        logs = ""
+        for result in results[0]:
+            logs += ("\n"+f"Score : {result.distance}, \nText : {result.entity.get('content')}"+"\n\n")
+        logger.info(f"* log >> 검색 결과: {logs}")
 
         # 결과 확인
         '''logger.info(f"* log >> 쿼리 결과")
         for result in results[0]:
             logger.info("\n-------------------------------------------------------------------")
-            logger.info(f"Score : {result.distance}, \nText : \n{result.entity.get('content')}")'''
+            logger.info(f"Score : {result.distance}, \nText : {result.entity.get('content')}")'''
 
         return context
     except Exception as e:
@@ -435,6 +448,7 @@ async def augment(curriculum_context, query):
 async def generate(question):
     def get_chatgpt_response(client, question, model="gpt-4o-mini"):
         try:
+            dt7 = str(datetime.fromtimestamp(time.time()))
             gpt_response = client.chat.completions.create(
                 model=model,
                 messages=[
@@ -444,12 +458,14 @@ async def generate(question):
                 ],
                 temperature=0.5
             )
+            dt8 = str(datetime.fromtimestamp(time.time()))
+            logger.info(f"{dt7} ~ {dt8}: LLM 응답 완료")
             return gpt_response.choices[0].message.content
         except Exception as e:
             logger.info(f"Error during GPT querying: {e}")
             return None
 
     chatgpt_response = get_chatgpt_response(openai_client, question)
-    logger.info(f"* log >> ChatGPT Response: {chatgpt_response}")
+    logger.info(f"* log >> 응답 결과 \n {chatgpt_response}")
     return chatgpt_response
 
