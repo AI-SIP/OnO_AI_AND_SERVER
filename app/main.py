@@ -440,6 +440,9 @@ async def retrieve(problem_text: str):
         )
         dt6 = str(datetime.fromtimestamp(time.time()))
         context = ' '.join([result.entity.get('content') for result in results[0]])
+        subjects_list = [result.entity.get('subject_name') for result in results[0]]
+        unit_list = [result.entity.get('unit_name') for result in results[0]]
+        main_concept_list = [result.entity.get('main_concept') for result in results[0]]
         logger.info(f"{dt5} ~ {dt6}: 검색 완료")
         logs = ""
         for result in results[0]:
