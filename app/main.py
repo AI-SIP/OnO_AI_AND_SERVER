@@ -22,10 +22,10 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 #  클라이언트 생성
-s3_client = boto3.client( "s3",
-                          region_name="ap-northeast-2")
+s3_client = boto3.client("s3",
+                          region_name="ap-northeast-2",)
 ssm_client = boto3.client('ssm',
-                          region_name='ap-northeast-2')
+                          region_name="ap-northeast-2",)
 
 # s3 버킷 연결
 try:
@@ -263,7 +263,7 @@ openai_client = OpenAI(api_key=openai_secret_key)
 
 # Mivlus DB 연결
 SERVER = os.getenv('SERVER')
-logger.info(f"* log >> 환경변수 SERVER: {SERVER}로 받아왔습니다.")
+logger.info(f"* log >> 환경변수를 SERVER({SERVER})로 받아왔습니다.")
 
 MILVUS_HOST = ssm_client.get_parameter(
     Name=f'/ono/{SERVER}/fastapi/MILVUS_HOST_NAME',
@@ -280,14 +280,15 @@ async def connect_milvus():
     try:
         # Milvus 서버 연결
         dt1 = str(datetime.fromtimestamp(time.time()))
-        connections.connect(alias="default", host=MILVUS_HOST, port=MILVUS_PORT)
+        connections.connect(alias="default", host=MILVUS_HOST, port=MILVUS_PORT)  # server 용
+        # connections.connect(host="127.0.0.1", port=19530, db="default")  # localhost 용
         dt2 = str(datetime.fromtimestamp(time.time()))
         logger.info(f"{dt1} ~ {dt2}: Milvus 서버 {MILVUS_HOST}:{MILVUS_PORT}에 연결 완료")
 
         # 컬렉션의 스키마 출력
         if utility.has_collection(COLLECTION_NAME):
             collection = Collection(COLLECTION_NAME)
-            logger.info("* 존재하는 Collection Schema:")
+            logger.info(f"* 존재하는 Collection {COLLECTION_NAME} Schema:")
             for field in collection.schema.fields:
                 logger.info(f"    - Field Name: {field.name}, Data Type #: {field.dtype}")
 
@@ -312,15 +313,10 @@ async def create_milvus():
     ]
     schema = CollectionSchema(fields=fields, description='2015 Korean High School Curriculum Collection')
     collection = Collection(name=COLLECTION_NAME, schema=schema)
-    logger.info(f"* log >> Collection [{COLLECTION_NAME}] is created.")
+    logger.info(f"* log >> New Collection [{COLLECTION_NAME}] is created.")
 
     # 인덱스 생성
-    # 스칼라 인덱스
-    collection.create_index(
-        field_name="id"
-    )
-    # 벡터 인덱스
-    index_params = {
+    index_params = {  # 벡터 인덱스
         'index_type': INDEX_TYPE,
         'metric_type': 'COSINE',
         'params': {
@@ -389,7 +385,7 @@ async def insert_curriculum_embeddings(subject: str):
     except Exception as e:
         logger.error(f"Error reading curriculum from S3: {e}")
 
-    # 데이터 임베딩
+    # 교과과정 내용 임베딩
     content_embeddings = get_embedding(openai_client, texts)
     logger.info(f"* log >> embedding 완료. dimension: {DIMENSION}")
 
