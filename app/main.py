@@ -458,7 +458,7 @@ async def retrieve(problem_text: str):
 async def augment(curriculum_context, query):
     prompt = "너는 공책이야. 내가 준 교육과정 중에 아래 문제와 관련된 교육과정을 골라서 고등학생 한 명에게\
     이 문제를 왜 틀리거나 헷갈릴 수 있으며, 어떤 개념과 사고과정 등이 필요해 보이는지를 \
-    이 문제의 의도와 핵심을 짚어 간단히 정리해서 고등학생에게 보여줘.\n"
+    이 문제의 의도와 핵심을 짚어가되 너무 길지 않게 정리해서 고등학생에게 보여줘.\n"
     context = f"교과과정은 이렇고 {curriculum_context}"
     passage = f"문제는 이러해 {query}."
     augmented_query = prompt + context + passage
