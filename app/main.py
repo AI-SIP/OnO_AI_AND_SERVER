@@ -422,7 +422,8 @@ async def retrieve(problem_text: str):
         search_params = {
             'metric_type': 'COSINE',
             'params': {
-                'probe': 20
+                'radius': 0.35,
+                'range_filter': 0.9
             },
         }
         dt5 = str(datetime.fromtimestamp(time.time()))
@@ -430,7 +431,7 @@ async def retrieve(problem_text: str):
             data=query_embeddings[0],
             anns_field='content_embedding',
             param=search_params,
-            limit=3,
+            limit=2,
             expr=None,
             output_fields=['content', 'subject_name', 'unit_name', 'main_concept']
         )
