@@ -456,12 +456,14 @@ async def retrieve(problem_text: str):
 
 @app.get("/analysis/augmentation")
 async def augment(curriculum_context, query):
-    prompt = "너는 공책이야. 내가 준 교육과정 중에 아래 문제와 관련된 교육과정을 골라서 고등학생 한 명에게\
-    이 문제를 왜 틀리거나 헷갈릴 수 있으며, 어떤 개념과 사고과정 등이 필요해 보이는지를 \
-    이 문제의 의도와 핵심을 짚어가되 너무 길지 않게 정리해서 고등학생에게 보여줘.\n"
-    context = f"교과과정은 이렇고 {curriculum_context}"
-    passage = f"문제는 이러해 {query}."
-    augmented_query = prompt + context + passage
+    prompt = ("너는 고등학생의 오답 문제를 통해 약점을 보완해주는 공책이야. \
+              교육과정을 참고해서 오답 문제 핵심 의도를 바탕으로 문제에서 헷갈릴만한 요소, \
+              학생이 놓친 것 같은 중요한 개념을 찾아 그 개념에 대해 4줄 이내로 설명해주고, \
+              그 개념을 적용해서 풀이를 요점에 따라서 짧게(4줄 내외) 작성해줘. \
+              만약 오답 문제와 교과과정이 관련이 없다고 판단되면, 교육과정은 참고하지 않으면 돼. \n\n\n")
+    passage = f"오답 문제 : {query} \n\n\n"
+    context = f"교과과정 : {curriculum_context} \n\n\n"
+    augmented_query = prompt + passage + context
     return augmented_query
 
 @app.get("/analysis/generation")
