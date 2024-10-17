@@ -57,15 +57,14 @@ class ColorRemover:
             temp_mask = cv2.inRange(image_hsv, lower_bound, upper_bound)
             self.masks = cv2.bitwise_or(self.masks, temp_mask)
 
-        # Dilation 적용
-        '''kernel = np.ones((3,3), np.uint8)
-        if self.masks is not None:
-            self.masks = cv2.dilate(self.masks, kernel, iterations=3)'''
-
         # Opening 적용
-        '''if self.size > 1024 * 1536:
-            kernel = np.ones((1, 1), np.uint8)  # mask 내 노이즈 제거
-            self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)'''
+        '''kernel = np.ones((3, 3), np.uint8)  # mask 내 노이즈 제거
+        self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)'''
+
+        # Dilation 적용
+        '''kernel = np.ones((1, 1), np.uint8)
+        if self.masks is not None:
+            self.masks = cv2.dilate(self.masks, kernel, iterations=2)'''
 
     def inpainting(self, image_rgb):
         if self.masks is not None and isinstance(self.masks, np.ndarray):
