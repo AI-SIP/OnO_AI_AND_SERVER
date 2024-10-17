@@ -70,7 +70,7 @@ class ColorRemover:
     def inpainting(self, image_rgb):
         if self.masks is not None and isinstance(self.masks, np.ndarray):
             inpainted_image = image_rgb.copy()
-            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 15, cv2.INPAINT_TELEA)
+            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 10, cv2.INPAINT_TELEA)
             # inpainted_image = cv2.inpaint(inpainted_image, self.masks, 2, cv2.INPAINT_TELEA)
             # inpainted_image[self.masks != 0] = [255, 255, 255]
             return inpainted_image
