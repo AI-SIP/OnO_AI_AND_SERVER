@@ -76,7 +76,7 @@ async def processColor(request: Request):
     data = await request.json()
     full_url = data['fullUrl']
     colors_list = data['colorsList']
-    tolerance = data.get('tolerance')  # value or None
+    intensity = data.get('intensity')  # value or None
 
     try:
         target_rgb_list = []
@@ -93,10 +93,9 @@ async def processColor(request: Request):
         corrected_img_bytes = ImageManager.correct_rotation(img_bytes, paths['extension'])
         logger.info("Key is : %s and Start processing", s3_key)
 
-        if tolerance is not None:
-            color_remover = ColorRemover(target_rgb_list, tolerance)
-        else:
-            color_remover = ColorRemover(target_rgb_list)
+        if intensity is None:
+            intensity = 1  # default: weak
+        color_remover = ColorRemover(target_rgb_list, intensity)
         img_input_bytes, img_mask_bytes, img_output_bytes = color_remover.process(corrected_img_bytes, paths['extension'])
         logger.info("Finished Processing, and Start Uploading Image")
 
