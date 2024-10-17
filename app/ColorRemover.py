@@ -17,14 +17,15 @@ def rgb_to_hsv_list(rgb_list):
 
 
 class ColorRemover:
-    def __init__(self, target_rgb_list, tolerance=(30, 150, 150)): # 팀 주정뱅이: 30, 150, 150
+    def __init__(self, target_rgb_list, intensity):  # 팀 주정뱅이: 30, 150, 150
         self.size = 0
         self.height = 0
         self.width = 0
 
         self.target_rgb_list = target_rgb_list
         self.target_hsv_list = None
-        self.tolerance = tolerance
+        self.tolerance = None
+        self.intensity = intensity
 
         self.alpha_channel = None
         self.masks = None
@@ -40,37 +41,62 @@ class ColorRemover:
         image_mask = image_rgb.copy()
         image_hsv = cv2.cvtColor(image_mask, cv2.COLOR_BGR2HSV)
 
-        '''lower_bound = np.array([95, 10, 10])  # target_hsv - tolerance
-                    upper_bound = np.array([125, 255, 255])  # target_hsv + tolerance
-                    self.masks = cv2.inRange(image_hsv, lower_bound, upper_bound)'''
-
         self.masks = np.zeros(image_hsv.shape[:2], dtype=np.uint8)
         self.target_hsv_list = rgb_to_hsv_list(self.target_rgb_list)
         for target_hsv in self.target_hsv_list:
-            logging.info("target_hsv: %s, tolerance: %s", target_hsv, self.tolerance)
-            lower_bound = np.array([max(0, target_hsv[0] - self.tolerance[0]),
-                                    max(5, target_hsv[1] - self.tolerance[1]),
-                                    max(5, target_hsv[2] - self.tolerance[2])])
-            upper_bound = np.array([min(179, target_hsv[0] + self.tolerance[0]),
-                                    min(255, target_hsv[1] + self.tolerance[1]),
-                                    min(255, target_hsv[2] + self.tolerance[2])])
+            circle_mask = None
+            if self.intensity == 0 or (self.intensity == 1 and target_hsv[1] <= 25):  # 샤프 특화
+                self.tolerance = (150, 35, 80)
+                lower_bound = np.array([max(0, target_hsv[0] - self.tolerance[0]),
+                                        max(0, target_hsv[1] - self.tolerance[1]),
+                                        max(50 , target_hsv[2] - self.tolerance[2])])
+                upper_bound = np.array([min(179, target_hsv[0] + self.tolerance[0]),
+                                        min(200, target_hsv[1] + self.tolerance[1]),
+                                        min(150, target_hsv[2] + self.tolerance[2])])
+            elif self.intensity == 2 or (self.intensity == 1 and target_hsv[1] > 25):
+                self.tolerance = (30, 180, 160)  # 튀는 색상펜 특화
+                lower_bound = np.array([max(0, target_hsv[0] - self.tolerance[0]),
+                                        max(20, target_hsv[1] - self.tolerance[1]),
+                                        max(10, target_hsv[2] - self.tolerance[2])])
+                upper_bound = np.array([min(179, target_hsv[0] + self.tolerance[0]),
+                                        min(255, target_hsv[1] + self.tolerance[1]),
+                                        min(255, target_hsv[2] + self.tolerance[2])])
+                lower_hue = target_hsv[0] - self.tolerance[0]
+                upper_hue = target_hsv[0] + self.tolerance[0]
+                # 빨간색 순환처리
+                if lower_hue < 0:
+                    circle_lower_bound = lower_bound.copy()
+                    circle_upper_bound = upper_bound.copy()
+                    circle_lower_bound[0] = (target_hsv[0] - self.tolerance[0] + 180) % 180
+                    circle_upper_bound[0] = 179
+                    circle_mask = cv2.inRange(image_hsv, circle_lower_bound, circle_upper_bound)
+                elif upper_hue > 179:
+                    circle_lower_bound = lower_bound.copy()
+                    circle_upper_bound = upper_bound.copy()
+                    circle_lower_bound[0] = 0
+                    circle_upper_bound[0] = (target_hsv[0] + self.tolerance[0] - 180) % 180
+                    circle_mask = cv2.inRange(image_hsv, circle_lower_bound, circle_upper_bound)
+
             temp_mask = cv2.inRange(image_hsv, lower_bound, upper_bound)
+            logging.info("target_hsv: %s, from: %s  to: %s", target_hsv, lower_bound, upper_bound)
+            if circle_mask is not None:
+                temp_mask = cv2.bitwise_or(temp_mask, circle_mask)
+                logging.info("+ red target_hsv: %s, from: %s  to: %s", target_hsv, circle_lower_bound, circle_upper_bound)
             self.masks = cv2.bitwise_or(self.masks, temp_mask)
 
-        # Dilation 적용
-        '''kernel = np.ones((3,3), np.uint8)
-        if self.masks is not None:
-            self.masks = cv2.dilate(self.masks, kernel, iterations=3)'''
-
         # Opening 적용
-        '''if self.size > 1024 * 1536:
-            kernel = np.ones((1, 1), np.uint8)  # mask 내 노이즈 제거
-            self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)'''
+        '''kernel = np.ones((3, 3), np.uint8)  # mask 내 노이즈 제거
+        self.masks = cv2.morphologyEx(self.masks, cv2.MORPH_OPEN, kernel)'''
+
+        # Dilation 적용
+        '''kernel = np.ones((1, 1), np.uint8)
+        if self.masks is not None:
+            self.masks = cv2.dilate(self.masks, kernel, iterations=2)'''
 
     def inpainting(self, image_rgb):
         if self.masks is not None and isinstance(self.masks, np.ndarray):
             inpainted_image = image_rgb.copy()
-            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 15, cv2.INPAINT_TELEA)
+            inpainted_image = cv2.inpaint(inpainted_image, self.masks, 10, cv2.INPAINT_TELEA)
             # inpainted_image = cv2.inpaint(inpainted_image, self.masks, 2, cv2.INPAINT_TELEA)
             # inpainted_image[self.masks != 0] = [255, 255, 255]
             return inpainted_image
@@ -223,8 +249,8 @@ class ColorRemover:
     def filtering(self, img_rgb):
         """ 이미지의 명암대비 강화 및 밝기 증가"""
 
-        alpha = 1.3  # 대비 계수
-        beta = 1.1  # 밝기 조절이 필요 없는 경우 0
+        alpha = 1.1  # 대비 계수
+        beta = 1.0  # 밝기 조절이 필요 없는 경우 1.0
         enhanced_contrast_image = cv2.convertScaleAbs(img_rgb, alpha=alpha, beta=beta)  # 대비가 강화된 이미지 생성
 
         return enhanced_contrast_image
