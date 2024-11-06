@@ -60,11 +60,10 @@ class ColorRemover:
         for target_hsv in self.target_hsv_list:
             circle_mask = None
             if target_hsv[1] <= 25:  # 색상의 채도가 낮다면 -> 펜슬 간주
-                continue
                 lower_bound = np.array([max(0, target_hsv[0] - self.sharp_tolerance[0]),
                                         max(0, target_hsv[1] - self.sharp_tolerance[1]),
                                         max(lower_min_v, target_hsv[2] - self.sharp_tolerance[2])])
-                upper_bound = np.array([min(179, target_hsv[0] + self.sharp_tolerance[0]),
+                upper_bound = np.array([min(180, target_hsv[0] + self.sharp_tolerance[0]),
                                         min(30, target_hsv[1] + self.sharp_tolerance[1]),
                                         min(150, target_hsv[2] + self.sharp_tolerance[2])])
             else:  # 색상의 채도가 있다면 -> 색상펜 간주
@@ -80,9 +79,9 @@ class ColorRemover:
                     circle_lower_bound = lower_bound.copy()
                     circle_upper_bound = upper_bound.copy()
                     circle_lower_bound[0] = (target_hsv[0] - self.color_tolerance[0] + 180) % 180
-                    circle_upper_bound[0] = 179
+                    circle_upper_bound[0] = 180
                     circle_mask = cv2.inRange(image_hsv, circle_lower_bound, circle_upper_bound)
-                elif upper_hue > 179:
+                elif upper_hue > 180:
                     circle_lower_bound = lower_bound.copy()
                     circle_upper_bound = upper_bound.copy()
                     circle_lower_bound[0] = 0
