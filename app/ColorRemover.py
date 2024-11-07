@@ -24,7 +24,8 @@ class ColorRemover:
 
         self.target_rgb_list = target_rgb_list
         self.target_hsv_list = None
-        self.tolerance = None
+        self.pencil_tolerance = None
+        self.color_tolerance = None
         self.intensity = intensity
 
         self.alpha_channel = None
@@ -43,38 +44,48 @@ class ColorRemover:
 
         self.masks = np.zeros(image_hsv.shape[:2], dtype=np.uint8)
         self.target_hsv_list = rgb_to_hsv_list(self.target_rgb_list)
+        if self.intensity == 0:  # 강도 약하게
+            self.color_tolerance = (5, 180, 160)  # 튀는 색상펜 특화
+            self.sharp_tolerance = (150, 30, 60)  # 샤프 특화
+            lower_min_v = 50
+        elif self.intensity == 1:  # 강도 중간
+            self.color_tolerance = (15, 180, 160)  # 튀는 색상펜 특화
+            self.sharp_tolerance = (150, 30, 60)  # 샤프 특화
+            lower_min_v = 30
+        else:  # 강도 강하게
+            self.color_tolerance = (30, 180, 160)  # 튀는 색상펜 특화
+            self.sharp_tolerance = (150, 40, 90)  # 샤프 특화
+            lower_min_v = 10
+
         for target_hsv in self.target_hsv_list:
             circle_mask = None
-            if self.intensity == 0 or (self.intensity == 1 and target_hsv[1] <= 25):  # 샤프 특화
-                self.tolerance = (150, 35, 80)
-                lower_bound = np.array([max(0, target_hsv[0] - self.tolerance[0]),
-                                        max(0, target_hsv[1] - self.tolerance[1]),
-                                        max(50 , target_hsv[2] - self.tolerance[2])])
-                upper_bound = np.array([min(179, target_hsv[0] + self.tolerance[0]),
-                                        min(200, target_hsv[1] + self.tolerance[1]),
-                                        min(150, target_hsv[2] + self.tolerance[2])])
-            elif self.intensity == 2 or (self.intensity == 1 and target_hsv[1] > 25):
-                self.tolerance = (30, 180, 160)  # 튀는 색상펜 특화
-                lower_bound = np.array([max(0, target_hsv[0] - self.tolerance[0]),
-                                        max(20, target_hsv[1] - self.tolerance[1]),
-                                        max(10, target_hsv[2] - self.tolerance[2])])
-                upper_bound = np.array([min(179, target_hsv[0] + self.tolerance[0]),
-                                        min(255, target_hsv[1] + self.tolerance[1]),
-                                        min(255, target_hsv[2] + self.tolerance[2])])
-                lower_hue = target_hsv[0] - self.tolerance[0]
-                upper_hue = target_hsv[0] + self.tolerance[0]
-                # 빨간색 순환처리
-                if lower_hue < 0:
+            if target_hsv[1] <= 25:  # 색상의 채도가 낮다면 -> 펜슬 간주
+                lower_bound = np.array([max(0, target_hsv[0] - self.sharp_tolerance[0]),
+                                        max(0, target_hsv[1] - self.sharp_tolerance[1]),
+                                        max(lower_min_v, target_hsv[2] - self.sharp_tolerance[2])])
+                upper_bound = np.array([min(180, target_hsv[0] + self.sharp_tolerance[0]),
+                                        min(30, target_hsv[1] + self.sharp_tolerance[1]),
+                                        min(150, target_hsv[2] + self.sharp_tolerance[2])])
+            else:  # 색상의 채도가 있다면 -> 색상펜 간주
+                lower_bound = np.array([max(0, target_hsv[0] - self.color_tolerance[0]),
+                                        max(20, target_hsv[1] - self.color_tolerance[1]),
+                                        max(lower_min_v, target_hsv[2] - self.color_tolerance[2])])
+                upper_bound = np.array([min(180, target_hsv[0] + self.color_tolerance[0]),
+                                        min(255, target_hsv[1] + self.color_tolerance[1]),
+                                        min(255, target_hsv[2] + self.color_tolerance[2])])
+                lower_hue = target_hsv[0] - self.color_tolerance[0]
+                upper_hue = target_hsv[0] + self.color_tolerance[0]
+                if lower_hue < 0:  # 빨간색 순환처리
                     circle_lower_bound = lower_bound.copy()
                     circle_upper_bound = upper_bound.copy()
-                    circle_lower_bound[0] = (target_hsv[0] - self.tolerance[0] + 180) % 180
-                    circle_upper_bound[0] = 179
+                    circle_lower_bound[0] = (target_hsv[0] - self.color_tolerance[0] + 180) % 180
+                    circle_upper_bound[0] = 180
                     circle_mask = cv2.inRange(image_hsv, circle_lower_bound, circle_upper_bound)
-                elif upper_hue > 179:
+                elif upper_hue > 180:
                     circle_lower_bound = lower_bound.copy()
                     circle_upper_bound = upper_bound.copy()
                     circle_lower_bound[0] = 0
-                    circle_upper_bound[0] = (target_hsv[0] + self.tolerance[0] - 180) % 180
+                    circle_upper_bound[0] = (target_hsv[0] + self.color_tolerance[0] - 180) % 180
                     circle_mask = cv2.inRange(image_hsv, circle_lower_bound, circle_upper_bound)
 
             temp_mask = cv2.inRange(image_hsv, lower_bound, upper_bound)
