@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # 작업 디렉토리 설정
 WORKDIR /test
+RUN mkdir models
 
 # 의존성 파일 복사 및 설치
 COPY ./requirements.txt /test/requirements.txt

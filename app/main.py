@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Request
 from starlette import status
 from starlette.responses import StreamingResponse, JSONResponse
 from ColorRemover import ColorRemover
+from AIProcessor import AIProcessor
 import ImageFunctions as ImageManager
 import logging
 import os
@@ -36,7 +37,7 @@ except Exception as e:
 
 
 def create_file_path(obj_path, extension):
-    file_id = uuid4()  # 각 클라이언트마다 고유한 파일 ID 생성
+    file_id = uuid4()[:4]  # 각 클라이언트마다 고유한 파일 ID 생성
     dir_path = obj_path.rsplit('/', 1)[0]
     paths = {"input_path": f"{dir_path}/{file_id}.input.{extension}",
              "output_path": f"{dir_path}/{file_id}.output.{extension}",
