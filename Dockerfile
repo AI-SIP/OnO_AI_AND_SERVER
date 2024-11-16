@@ -14,7 +14,6 @@ RUN apt-get update && apt-get install -y git \
 
 # 작업 디렉토리 설정
 WORKDIR /test
-RUN mkdir models
 
 # 의존성 파일 복사 및 설치
 COPY ./requirements.txt /test/requirements.txt
@@ -27,4 +26,4 @@ COPY ./app /test/app/
 WORKDIR /test/app
 
 # 컨테이너 실행 시 실행할 명령어
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["bash", "-c", "mkdir -p /test/models && uvicorn main:app --host 0.0.0.0 --port 8000"]

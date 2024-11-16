@@ -37,7 +37,7 @@ except Exception as e:
 
 
 def create_file_path(obj_path, extension):
-    file_id = uuid4()[:4]  # 각 클라이언트마다 고유한 파일 ID 생성
+    file_id = uuid4()  # 각 클라이언트마다 고유한 파일 ID 생성
     dir_path = obj_path.rsplit('/', 1)[0]
     paths = {"input_path": f"{dir_path}/{file_id}.input.{extension}",
              "mask_path": f"{dir_path}/{file_id}.mask.{extension}",
@@ -69,10 +69,21 @@ def upload_image_to_s3(file_bytes, file_path):
 def download_model_from_s3(yolo_path: str = 'models/yolo11_best.pt', sam_path: str = 'models/sam_vit_h_4b8939.pth'):
     dest_dir = f'../'  # 모델을 저장할 컨테이너 내 경로
     try:
-        s3_client.download_file(BUCKET_NAME, yolo_path, dest_dir+yolo_path)
-        s3_client.download_file(BUCKET_NAME, sam_path, dest_dir+sam_path)
-        logger.info(f'YOLOv11 & SAM models downloaded successfully to {dest_dir}')
-        logger.info(f"files in 'models' Dir: {os.listdir(dest_dir)}")
+        yolo_full_path = dest_dir+yolo_path
+        sam_full_path = dest_dir+sam_path
+        if not os.path.exists(yolo_full_path):
+            s3_client.download_file(BUCKET_NAME, yolo_path, yolo_full_path)
+            logger.info(f'YOLOv11 & SAM models downloaded successfully to {dest_dir}')
+        else:
+            logger.info(f'YOLOv11 already exists at {yolo_full_path}')
+        if not os.path.exists(sam_full_path):
+            s3_client.download_file(BUCKET_NAME, sam_path, sam_full_path)
+            logger.info(f'SAM models downloaded successfully to {dest_dir}')
+        else:
+            logger.info(f'SAM models already exists at {dest_dir}')
+
+
+        logger.info(f"Files in 'models' Dir: {os.listdir(dest_dir)}")
     except Exception as e:
         print(f'Failed to download model: {e}')
 
@@ -89,6 +100,8 @@ async def get_models():
     except Exception as e:
         logger.error("Error with Download & Saving AIs: %s", e)
         raise HTTPException(status_code=500, detail="Error with Download & Saving AIs")
+
+get_models()
 
 @app.post("/process-shape")
 async def processShape(request: Request):
