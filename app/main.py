@@ -40,8 +40,8 @@ def create_file_path(obj_path, extension):
     file_id = uuid4()[:4]  # 각 클라이언트마다 고유한 파일 ID 생성
     dir_path = obj_path.rsplit('/', 1)[0]
     paths = {"input_path": f"{dir_path}/{file_id}.input.{extension}",
-             "output_path": f"{dir_path}/{file_id}.output.{extension}",
              "mask_path": f"{dir_path}/{file_id}.mask.{extension}",
+             "output_path": f"{dir_path}/{file_id}.output.{extension}",
              "extension": extension}
     return paths
 
@@ -517,8 +517,8 @@ async def retrieve(problem_text: str):
 async def augment(curriculum_context, query):
     prompt = ("너는 고등학생의 오답 문제를 통해 약점을 보완해주는 공책이야. \
               교육과정을 참고해서 오답 문제 핵심 의도를 바탕으로 문제에서 헷갈릴만한 요소, \
-              학생이 놓친 것 같은 중요한 개념을 찾아 그 개념에 대해 4줄 이내로 설명해주고, \
-              그 개념을 적용해서 풀이를 요점에 따라서 짧게(4줄 내외) 작성해줘. \
+              이 문제를 틀렸다면 놓칠 것 같은 같은 중요한 개념을 연관지어 그 개념에 대해 4줄 이내로 설명해주고, \
+              그 개념을 적용해서 풀이를 핵심적 원리에 집중하여 짧게(4줄 내외) 작성해줘. \
               만약 오답 문제와 교과과정이 관련이 없다고 판단되면, 교육과정은 참고하지 않으면 돼. \n\n\n")
     passage = f"오답 문제 : {query} \n\n\n"
     context = f"교과과정 : {curriculum_context} \n\n\n"
