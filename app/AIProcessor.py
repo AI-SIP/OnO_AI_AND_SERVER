@@ -58,7 +58,6 @@ class AIProcessor:
         results = self.yolo_model.predict(source=img, imgsz=640, device=self.device,
                                           iou=0.3, conf=0.3)
         bbox = results[0].boxes.xyxy.tolist()
-        logging.info(f'1차 마스킹 - 바운딩 박스 생성 완료, {len(bbox)}개')
         return bbox
 
     def segment_from_points(self, image, user_points, user_labels, bbox,  save_path=None):
@@ -70,8 +69,8 @@ class AIProcessor:
             point_labels=input_label,
             multimask_output=False,
         )'''
-        filtered_points, filtered_labels = self.remove_points_in_bboxes(user_points, user_labels, bbox)
-        logging.info(f'2차 마스킹 - 사용자 입력 필터링: from {len(user_points)}개 to {len(filtered_points)}개')
+        # filtered_points, filtered_labels = self.remove_points_in_bboxes(user_points, user_labels, bbox)
+        # logging.info(f'2차 마스킹 - 사용자 입력 필터링: from {len(user_points)}개 to {len(filtered_points)}개')
 
         # results = self.sam_model.predict(source=image, points=filtered_points, labels=filtered_labels)
         results = self.sam_model.predict(source=image, bboxes=[user_points])
