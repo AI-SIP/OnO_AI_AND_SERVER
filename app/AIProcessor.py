@@ -22,6 +22,21 @@ class AIProcessor:
         self.height = 0
         self.width = 0
 
+    def remove_points_in_bboxes(point_list, label_list, bbox_list):
+        def is_point_in_bbox(p, b):
+            x, y = p
+            x_min, y_min, x_max, y_max = b
+            return x_min <= x <= x_max and y_min <= y <= y_max
+
+        filtered_p = []
+        filtered_l = []
+        for p, l in zip(point_list, label_list):
+            if not any(is_point_in_bbox(p, b) for b in bbox_list):
+                filtered_p.append(p)
+                filtered_l.append(l)
+
+        return filtered_p, filtered_l
+
     def remove_alpha(self, image):
         self.height, self.width = image.shape[:2]
         self.size = self.height * self.width
