@@ -17,7 +17,7 @@ class AIProcessor:
         self.yolo_model = YOLO(self.yolo_path)  # yolo 로드
         self.sam_model = SAM(self.sam_path)  # None
         self.predictor = None
-
+        self.indices = None
         self.alpha_channel = None
         self.size = 0
         self.height = 0
@@ -58,6 +58,8 @@ class AIProcessor:
         results = self.yolo_model.predict(source=img, imgsz=640, device=self.device,
                                           iou=0.3, conf=0.3)
         bbox = results[0].boxes.xyxy.tolist()
+        self.indices = [index for index, value in enumerate(results[0].boxes.cls) if value == 1.0]
+        logging.info(f'객체 탐지 - {self.indices} 박스에 동그라미 존재')
         return bbox
 
     def segment_from_points(self, image, user_points, user_labels, bbox,  save_path=None):
@@ -101,10 +103,15 @@ class AIProcessor:
         mask_boxes = results[0].masks.data
 
         masks_np = np.zeros(mask_boxes.shape[-2:], dtype=np.uint8)
-        for mask in mask_boxes:
-            mask_np = mask.cpu().numpy().astype(np.uint8) * 255
+        for i, mask in enumerate(mask_boxes):
+            mask_np = mask.cpu().numpy().astype(np.uint8) * 255  # True는 255, False는 0으로 변환
             mask_np = mask_np.squeeze()
+            if i in self.indices:
+                # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))  # Adjust size as needed
+                kernel = np.ones((11, 11), np.uint8)
+                mask_np = cv2.morphologyEx(mask_np, cv2.MORPH_GRADIENT, kernel)
             masks_np = cv2.bitwise_or(masks_np, mask_np)
+            # cv2.imwrite(f'mask_box{i}.jpg', masks_np)
 
         # cv2.imwrite(save_path, masks_np)
         logging.info(f'1차 마스킹 - 바운딩 박스 {len(mask_boxes)}개 세그먼트 완료.')
