@@ -73,7 +73,8 @@ class AIProcessor:
         filtered_points, filtered_labels = self.remove_points_in_bboxes(user_points, user_labels, bbox)
         logging.info(f'2차 마스킹 - 사용자 입력 필터링: from {len(user_points)}개 to {len(filtered_points)}개')
 
-        results = self.sam_model.predict(source=image, points=filtered_points, labels=filtered_labels)
+        # results = self.sam_model.predict(source=image, points=filtered_points, labels=filtered_labels)
+        results = self.sam_model.predict(source=image, bboxes=[user_points])
         mask_points = results[0].masks.data
 
         masks_np = np.zeros(mask_points.shape[-2:], dtype=np.uint8)
@@ -82,7 +83,6 @@ class AIProcessor:
             mask_np = mask_np.squeeze()
             masks_np = cv2.bitwise_or(masks_np, mask_np)
 
-        # mask_points_uint8 = (masks_points[0] * 255).astype(np.uint8)
         # cv2.imwrite(save_path, mask_points_uint8)
         logging.info(f'2차 마스킹 - 사용자 입력에 대해 {len(mask_points)}개 영역으로 세그먼트 완료.')
         return masks_np
