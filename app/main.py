@@ -66,7 +66,7 @@ def upload_image_to_s3(file_bytes, file_path):
     s3_client.upload_fileobj(file_bytes, BUCKET_NAME, file_path)
 
 
-def download_model_from_s3(yolo_path: str = 'models/yolo11_best.pt', sam_path: str = 'models/sam_vit_h_4b8939.pth'):
+def download_model_from_s3(yolo_path: str = 'models/yolo11_best.pt', sam_path: str = "models/mobile_sam.pt"):  # models/sam_vit_h_4b8939.pth
     dest_dir = f'../'  # 모델을 저장할 컨테이너 내 경로
     try:
         yolo_full_path = dest_dir+yolo_path
@@ -81,7 +81,6 @@ def download_model_from_s3(yolo_path: str = 'models/yolo11_best.pt', sam_path: s
             logger.info(f'SAM models downloaded successfully to {dest_dir}')
         else:
             logger.info(f'SAM models already exists at {dest_dir}')
-
 
         logger.info(f"Files in 'models' Dir: {os.listdir(dest_dir)}")
     except Exception as e:
