@@ -131,8 +131,10 @@ async def processShape(request: Request):
         upload_image_to_s3(img_input_bytes, paths["input_path"])
         upload_image_to_s3(img_mask_bytes, paths["mask_path"])
         upload_image_to_s3(img_output_bytes, paths["output_path"])
-        upload_image_to_s3(one, paths["one"])
-        upload_image_to_s3(two, paths["two"])
+        if one is not None:
+            upload_image_to_s3(one, paths["one"])
+        if two is not None:
+            upload_image_to_s3(two, paths["two"])
 
         logger.info("AI 필기 제거 결과 이미지 업로드 완료")
         return JSONResponse(content={"message": "File processed successfully", "path": paths})
