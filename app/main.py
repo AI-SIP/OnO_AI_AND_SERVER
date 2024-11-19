@@ -120,7 +120,7 @@ async def processShape(request: Request):
         logger.info(f"시용자 입력 이미지({s3_key}) 다운로드 및 전처리 완료")
 
         # aiProcessor = AIProcessor(yolo_path="./models/yolo11_best.pt", sam_path="./models/sam_vit_h_4b8939.pth")  # local
-        aiProcessor = AIProcessor(yolo_path="../models/yolo11_best.pt", sam_path="../models/sam_vit_h_4b8939.pth")  # server
+        aiProcessor = AIProcessor(yolo_path="../models/yolo11_best.pt", sam_path="../models/mobile_sam.pt")  # server
         img_input_bytes, img_mask_bytes, img_output_bytes = aiProcessor.process(img_bytes=corrected_img_bytes,
                                                                                 user_points=point_list,
                                                                                 user_labels=label_list)
