@@ -42,6 +42,8 @@ def create_file_path(obj_path, extension):
     paths = {"input_path": f"{dir_path}/{file_id}.input.{extension}",
              "mask_path": f"{dir_path}/{file_id}.mask.{extension}",
              "output_path": f"{dir_path}/{file_id}.output.{extension}",
+             "one": f"{dir_path}/{file_id}.mask_b.{extension}",
+             "two": f"{dir_path}/{file_id}.mask_p.{extension}",
              "extension": extension}
     return paths
 
@@ -119,9 +121,9 @@ async def processShape(request: Request):
         corrected_img_bytes = ImageManager.correct_rotation(img_bytes, paths['extension'])
         logger.info(f"시용자 입력 이미지({s3_key}) 다운로드 및 전처리 완료")
 
-        # aiProcessor = AIProcessor(yolo_path="./models/yolo11_best.pt", sam_path="./models/sam_vit_h_4b8939.pth")  # local
+        # aiProcessor = AIProcessor(yolo_path='/Users/semin/models/yolo11_best.pt', sam_path='/Users/semin/models/mobile_sam.pt')  # local
         aiProcessor = AIProcessor(yolo_path="../models/yolo11_best.pt", sam_path="../models/mobile_sam.pt")  # server
-        img_input_bytes, img_mask_bytes, img_output_bytes = aiProcessor.process(img_bytes=corrected_img_bytes,
+        img_input_bytes, img_mask_bytes, img_output_bytes, one, two = aiProcessor.process(img_bytes=corrected_img_bytes,
                                                                                 user_points=point_list,
                                                                                 user_labels=label_list)
         logger.info("AI 필기 제거 프로세스 완료")
@@ -129,6 +131,8 @@ async def processShape(request: Request):
         upload_image_to_s3(img_input_bytes, paths["input_path"])
         upload_image_to_s3(img_mask_bytes, paths["mask_path"])
         upload_image_to_s3(img_output_bytes, paths["output_path"])
+        upload_image_to_s3(one, paths["one"])
+        upload_image_to_s3(two, paths["two"])
 
         logger.info("AI 필기 제거 결과 이미지 업로드 완료")
         return JSONResponse(content={"message": "File processed successfully", "path": paths})
