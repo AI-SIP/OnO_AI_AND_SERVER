@@ -118,7 +118,12 @@ class AIProcessor:
         return masks_np
 
     def inpainting(self, image, mask_total):
-        inpainted_image = cv2.inpaint(image.copy(), mask_total, 10, cv2.INPAINT_TELEA)
+        # inpainted_image = cv2.inpaint(image.copy(), mask_total, 10, cv2.INPAINT_TELEA)
+        print(mask_total.shape)  # (1893, 1577) with 0 or 255
+        # print(image.shape)  # (1893, 1577, 3)
+
+        inpainted_image = image.copy()
+        inpainted_image[mask_total == 255] = [255, 255, 255]
         final_image = cv2.convertScaleAbs(inpainted_image, alpha=1.5, beta=10)
         # cv2.imwrite('test_images/inpainted_init.png', inpainted_image)
         # cv2.imwrite('test_images/inpainted_final.png', final_image)
