@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, File, UploadFile, Request
 from starlette import status
 from starlette.responses import StreamingResponse, JSONResponse
 from ColorRemover import ColorRemover
+from AIProcessor import AIProcessor
 import ImageFunctions as ImageManager
 import logging
 import os
@@ -39,8 +40,10 @@ def create_file_path(obj_path, extension):
     file_id = uuid4()  # 각 클라이언트마다 고유한 파일 ID 생성
     dir_path = obj_path.rsplit('/', 1)[0]
     paths = {"input_path": f"{dir_path}/{file_id}.input.{extension}",
-             "output_path": f"{dir_path}/{file_id}.output.{extension}",
              "mask_path": f"{dir_path}/{file_id}.mask.{extension}",
+             "output_path": f"{dir_path}/{file_id}.output.{extension}",
+             "one": f"{dir_path}/{file_id}.mask_b.{extension}",
+             "two": f"{dir_path}/{file_id}.mask_p.{extension}",
              "extension": extension}
     return paths
 
@@ -65,10 +68,84 @@ def upload_image_to_s3(file_bytes, file_path):
     s3_client.upload_fileobj(file_bytes, BUCKET_NAME, file_path)
 
 
+def download_model_from_s3(yolo_path: str = 'models/yolo11_best.pt', sam_path: str = "models/mobile_sam.pt"):  # models/sam_vit_h_4b8939.pth
+    dest_dir = f'../'  # 모델을 저장할 컨테이너 내 경로
+    try:
+        yolo_full_path = dest_dir+yolo_path
+        sam_full_path = dest_dir+sam_path
+        if not os.path.exists(yolo_full_path):
+            s3_client.download_file(BUCKET_NAME, yolo_path, yolo_full_path)
+            logger.info(f'YOLOv11 & SAM models downloaded successfully to {dest_dir}')
+        else:
+            logger.info(f'YOLOv11 already exists at {yolo_full_path}')
+        if not os.path.exists(sam_full_path):
+            s3_client.download_file(BUCKET_NAME, sam_path, sam_full_path)
+            logger.info(f'SAM models downloaded successfully to {dest_dir}')
+        else:
+            logger.info(f'SAM models already exists at {dest_dir}')
+
+        logger.info(f"Files in 'models' Dir: {os.listdir(dest_dir)}")
+    except Exception as e:
+        print(f'Failed to download model: {e}')
+
+
 @app.get("/", status_code=status.HTTP_200_OK)
 def greeting():
-    return JSONResponse(content={"message": "Hello! Let's start image processing"})
+    return JSONResponse(content={"message": "Hello! Welcome to OnO's FastAPI Server!"})
 
+
+@app.get("/load-models", status_code=status.HTTP_200_OK)
+async def get_models():
+    try:
+        download_model_from_s3()
+    except Exception as e:
+        logger.error("Error with Download & Saving AIs: %s", e)
+        raise HTTPException(status_code=500, detail="Error with Download & Saving AIs")
+
+get_models()
+
+@app.post("/process-shape")
+async def processShape(request: Request):
+    """ AI handwriting detection & Telea Algorithm-based inpainting """
+    data = await request.json()
+    full_url = data['fullUrl']
+    point_list = data.get('points')
+    label_list = data.get('labels')  # value or None
+    logger.info(f"사용자 입력 포인트: {point_list}")
+    logger.info(f"사용자 입력 라벨: {label_list}")
+
+    try:
+        s3_key = parse_s3_url(full_url)
+        paths = create_file_path(s3_key, s3_key.split(".")[-1])
+        img_bytes = download_image_from_s3(s3_key)  # download from S3
+        corrected_img_bytes = ImageManager.correct_rotation(img_bytes, paths['extension'])
+        logger.info(f"시용자 입력 이미지({s3_key}) 다운로드 및 전처리 완료")
+
+        # aiProcessor = AIProcessor(yolo_path='/Users/semin/models/yolo11_best.pt', sam_path='/Users/semin/models/mobile_sam.pt')  # local
+        aiProcessor = AIProcessor(yolo_path="../models/yolo11_best.pt", sam_path="../models/mobile_sam.pt")  # server
+        img_input_bytes, img_mask_bytes, img_output_bytes, one, two = aiProcessor.process(img_bytes=corrected_img_bytes,
+                                                                                user_points=point_list,
+                                                                                user_labels=label_list)
+        logger.info("AI 필기 제거 프로세스 완료")
+
+        upload_image_to_s3(img_input_bytes, paths["input_path"])
+        upload_image_to_s3(img_mask_bytes, paths["mask_path"])
+        upload_image_to_s3(img_output_bytes, paths["output_path"])
+        if one is not None:
+            upload_image_to_s3(one, paths["one"])
+        if two is not None:
+            upload_image_to_s3(two, paths["two"])
+
+        logger.info("AI 필기 제거 결과 이미지 업로드 완료")
+        return JSONResponse(content={"message": "File processed successfully", "path": paths})
+
+    except KeyError as e:
+        raise HTTPException(status_code=400, detail=f"Missing key: {e.args[0]}")
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error("Error during processing: %s", e)
+        raise HTTPException(status_code=500, detail="Error processing the image.")
 
 @app.post("/process-color")
 async def processColor(request: Request):
@@ -458,8 +535,8 @@ async def retrieve(problem_text: str):
 async def augment(curriculum_context, query):
     prompt = ("너는 고등학생의 오답 문제를 통해 약점을 보완해주는 공책이야. \
               교육과정을 참고해서 오답 문제 핵심 의도를 바탕으로 문제에서 헷갈릴만한 요소, \
-              학생이 놓친 것 같은 중요한 개념을 찾아 그 개념에 대해 4줄 이내로 설명해주고, \
-              그 개념을 적용해서 풀이를 요점에 따라서 짧게(4줄 내외) 작성해줘. \
+              이 문제를 틀렸다면 놓칠 것 같은 같은 중요한 개념을 연관지어 그 개념에 대해 4줄 이내로 설명해주고, \
+              그 개념을 적용해서 풀이를 핵심적 원리에 집중하여 짧게(4줄 내외) 작성해줘. \
               만약 오답 문제와 교과과정이 관련이 없다고 판단되면, 교육과정은 참고하지 않으면 돼. \n\n\n")
     passage = f"오답 문제 : {query} \n\n\n"
     context = f"교과과정 : {curriculum_context} \n\n\n"

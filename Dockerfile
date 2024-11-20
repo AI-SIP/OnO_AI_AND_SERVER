@@ -5,12 +5,12 @@ FROM python:3.12-slim
 LABEL org.opencontainers.image.source="https://github.com/AI-SIP/MVP_CV"
 
 # 필요한 시스템 패키지 먼저 설치
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y git \
     libgl1-mesa-glx \
     libglib2.0-0 \
     gcc \
     python3-dev && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* \
 
 # 작업 디렉토리 설정
 WORKDIR /test
@@ -26,4 +26,4 @@ COPY ./app /test/app/
 WORKDIR /test/app
 
 # 컨테이너 실행 시 실행할 명령어
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["bash", "-c", "mkdir -p /test/models && uvicorn main:app --host 0.0.0.0 --port 8000"]
