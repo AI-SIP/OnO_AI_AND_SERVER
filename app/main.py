@@ -102,7 +102,9 @@ async def get_models():
         logger.error("Error with Download & Saving AIs: %s", e)
         raise HTTPException(status_code=500, detail="Error with Download & Saving AIs")
 
+
 get_models()
+
 
 @app.post("/process-shape")
 async def processShape(request: Request):
@@ -124,8 +126,8 @@ async def processShape(request: Request):
         # aiProcessor = AIProcessor(yolo_path='/Users/semin/models/yolo11_best.pt', sam_path='/Users/semin/models/mobile_sam.pt')  # local
         aiProcessor = AIProcessor(yolo_path="../models/yolo11_best.pt", sam_path="../models/mobile_sam.pt")  # server
         img_input_bytes, img_mask_bytes, img_output_bytes, one, two = aiProcessor.process(img_bytes=corrected_img_bytes,
-                                                                                user_points=point_list,
-                                                                                user_labels=label_list)
+                                                                                          user_points=point_list,
+                                                                                          user_labels=label_list)
         logger.info("AI 필기 제거 프로세스 완료")
 
         upload_image_to_s3(img_input_bytes, paths["input_path"])
@@ -146,6 +148,7 @@ async def processShape(request: Request):
     except Exception as e:
         logger.error("Error during processing: %s", e)
         raise HTTPException(status_code=500, detail="Error processing the image.")
+
 
 @app.post("/process-color")
 async def processColor(request: Request):
@@ -372,8 +375,6 @@ async def connect_milvus():
         logger.error(f"Failed to connect to Milvus server: {str(e)}")
 
 
-
-
 @app.get("/milvus/create")
 async def create_milvus():
     await connect_milvus()  # milvus 서버 연결
@@ -531,17 +532,19 @@ async def retrieve(problem_text: str):
         logger.error(f"Error in search: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/analysis/augmentation")
 async def augment(curriculum_context, query):
-    prompt = ("너는 고등학생의 오답 문제를 통해 약점을 보완해주는 공책이야. \
-              교육과정을 참고해서 오답 문제 핵심 의도를 바탕으로 문제에서 헷갈릴만한 요소, \
-              이 문제를 틀렸다면 놓칠 것 같은 같은 중요한 개념을 연관지어 그 개념에 대해 4줄 이내로 설명해주고, \
-              그 개념을 적용해서 풀이를 핵심적 원리에 집중하여 짧게(4줄 내외) 작성해줘. \
-              만약 오답 문제와 교과과정이 관련이 없다고 판단되면, 교육과정은 참고하지 않으면 돼. \n\n\n")
+    prompt = ("너는 고등학생의 오답 문제를 통해 약점을 보완해주는 공책이야. 문제 풀이하면 안돼. \
+              교육과정을 참고해서 이 문제의 핵심 의도를 바탕으로 문제에서 헷갈릴만한 요소, \
+              이 문제를 틀렸다면 놓쳤을 수 있는 중요한 개념을 유추해서 그 개념에 대해 4줄 이내로 설명해. \
+              그 개념을 습득하기에 필요한 관련 개념들도 몇 개 소개해줘.  \
+              만약 오답 문제와 교과과정이 관련이 없는 과목 같다고 판단되면, 교육과정은 참고하지 않으면 돼. \n\n\n")
     passage = f"오답 문제 : {query} \n\n\n"
     context = f"교과과정 : {curriculum_context} \n\n\n"
     augmented_query = prompt + passage + context
     return augmented_query
+
 
 @app.get("/analysis/generation")
 async def generate(question):
@@ -555,7 +558,7 @@ async def generate(question):
                      "content": question
                      }
                 ],
-                temperature=0.7
+                temperature=0.6
             )
             dt8 = str(datetime.fromtimestamp(time.time()))
             logger.info(f"{dt7} ~ {dt8}: LLM 응답 완료")
@@ -567,4 +570,3 @@ async def generate(question):
     chatgpt_response = get_chatgpt_response(openai_client, question)
     logger.info(f"* log >> 응답 결과 \n {chatgpt_response}")
     return chatgpt_response
-
