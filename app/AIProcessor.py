@@ -108,7 +108,7 @@ class AIProcessor:
             mask_np = mask_np.squeeze()
             if i in self.indices:
                 # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13, 13))  # Adjust size as needed
-                kernel = np.ones((11, 11), np.uint8)
+                kernel = np.ones((25, 25), np.uint8)
                 mask_np = cv2.morphologyEx(mask_np, cv2.MORPH_GRADIENT, kernel)
             masks_np = cv2.bitwise_or(masks_np, mask_np)
             # cv2.imwrite(f'mask_box{i}.jpg', masks_np)
