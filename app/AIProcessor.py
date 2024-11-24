@@ -113,13 +113,12 @@ class AIProcessor:
 
         text_np = cv2.dilate(text_np, np.ones((4, 4), np.uint8), iterations=1)
         text_np = cv2.erode(text_np, np.ones((2, 2), np.uint8), iterations=2)
-        cv2.imwrite('text_np.jpg', text_np.astype(np.uint8))
+        # cv2.imwrite('text_np.jpg', text_np.astype(np.uint8))
 
         inpainted_image = image.copy()
         inpainted_image[mask_total == 255] = [255, 255, 255]
         inpainted_image[text_np == 255] = [30, 30, 30]
         final_image = cv2.convertScaleAbs(inpainted_image, alpha=1.5, beta=15)
-
 
         # inpainted_image = cv2.inpaint(image.copy(), mask_total, 15, cv2.INPAINT_TELEA)
         # cv2.imwrite('test_images/inpainted_init.png', inpainted_image)
