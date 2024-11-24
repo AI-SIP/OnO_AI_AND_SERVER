@@ -187,6 +187,7 @@ class AIProcessor:
         else:
             logging.info("***** 사용자 입력 세그멘테이션 스킵 ******")
             masks_by_user = None
+            mask_bytes = None
         # cv2.imwrite('test_images/mask_total.png', masks_total)
         if isinstance(masks_total, np.ndarray):
             image_output = self.inpainting(image_output, masks_total)
