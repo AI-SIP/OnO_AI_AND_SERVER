@@ -150,7 +150,7 @@ class AIProcessor:
         else:
             return image_rgb
 
-    def process(self, img_bytes, user_inputs, user_labels, extension='jpg'):
+    def process(self, img_bytes, user_inputs, extension='jpg'):
         """ local test 용도 Vs. server test 용도 구분 """
         ### local 용도
         # img_path = img_bytes

@@ -126,8 +126,7 @@ async def processShape(request: Request):
         # aiProcessor = AIProcessor(yolo_path='/Users/semin/models/yolo11_best.pt', sam_path='/Users/semin/models/mobile_sam.pt')  # local
         aiProcessor = AIProcessor(yolo_path="../models/yolo11_best.pt", sam_path="../models/mobile_sam.pt")  # server
         img_input_bytes, img_mask_bytes, img_output_bytes, one, two = aiProcessor.process(img_bytes=corrected_img_bytes,
-                                                                                          user_points=point_list,
-                                                                                          user_labels=label_list)
+                                                                                          user_inputs=point_list)
         logger.info("AI 필기 제거 프로세스 완료")
 
         upload_image_to_s3(img_input_bytes, paths["input_path"])
