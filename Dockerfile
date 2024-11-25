@@ -5,7 +5,7 @@ FROM python:3.12-slim
 LABEL org.opencontainers.image.source="https://github.com/AI-SIP/MVP_CV"
 
 # 필요한 시스템 패키지 먼저 설치
-RUN apt-get update && apt-get install -y git \
+RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     libglib2.0-0 \
     gcc \
