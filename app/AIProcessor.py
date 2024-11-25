@@ -193,9 +193,8 @@ class AIProcessor:
             logging.info("***** 2차: 사용자 입력 세그멘테이션 스킵 ******")
             masks_by_user = None
 
-        if isinstance(masks_total, np.ndarray) and len(bbox) > 0:
-            image_output = self.inpainting(image_output, masks_total, bbox)
-            logging.info('***** 인페인팅 수행 완료 ******')
+        image_output = cv2.convertScaleAbs(image_output, alpha=1.5, beta=10)
+        logging.info("***** 필기 제거 결과 후보정 완료 ******")
 
         _, input_bytes = cv2.imencode("." + extension, image)
         _, result_bytes = cv2.imencode("." + extension, image_output)
