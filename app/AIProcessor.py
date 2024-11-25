@@ -100,32 +100,33 @@ class AIProcessor:
         logging.info(f'2차 마스킹 - 사용자 입력에 대해 {len(mask_points)}개 영역으로 세그먼트 완료.')
         return masks_np
 
-    def inpainting(self, image, mask_total, bbox=None):
-
-        mask_total = np.zeros(image.shape[:2], dtype=np.uint8)
+    def inpaint_from_yolo(self, image, bbox=None):
+        inpainted_image = image.copy()
+        masks_np = np.zeros(image.shape[:2], dtype=np.uint8)
         text_np = np.zeros(image.shape[:2], dtype=np.uint8)  # 전체 roi_mask 저장
         for b in bbox:
             minx, miny, maxx, maxy = map(int, b)
-            mask_total[miny:maxy, minx:maxx] = 255  # 박스 영역을 255로 채움
-            roi = image[miny:maxy, minx:maxx]  # 해당 이미지만 크롭
-            roi_mask = cv2.inRange(roi, (0, 0, 0), (45, 45, 45))  # roi 내에서 인쇄된 글씨는 255값
+            masks_np[miny:maxy, minx:maxx] = 255  # 박스 영역을 255로 채움
+
+            roi = image[miny:maxy, minx:maxx]  # 박스 내 복사하고 텍스트만 추출하기
+            roi_mask = cv2.inRange(roi, (0, 0, 0), (40, 40, 45))  # roi 내에서 인쇄된 글씨는 255값
             text_np[miny:maxy, minx:maxx] = roi_mask
 
+            if maxy < image.shape[0]-2:  # 박스 근처 BG 컬러 샘플링
+                sample_color = image[maxy + 1, (minx+maxx)//2].tolist()  # 박스 하단 모서리 중앙 아래 픽셀값 샘플링
+            else:
+                sample_color = [255, 255, 255]  # 경계에 있을 경우, 기본 흰색
+            inpainted_image[miny:maxy, minx:maxx] = sample_color  # 인페인팅
+            logging.info(f'1차 인페인팅 - yolo 박스 샘플링 컬러 rgb: {sample_color}')
+
+        # 복원 수행
         text_np = cv2.dilate(text_np, np.ones((4, 4), np.uint8), iterations=1)
         text_np = cv2.erode(text_np, np.ones((2, 2), np.uint8), iterations=2)
-        # cv2.imwrite('text_np.jpg', text_np.astype(np.uint8))
 
-        inpainted_image = image.copy()
-        inpainted_image[mask_total == 255] = [255, 255, 255]
         inpainted_image[text_np == 255] = [30, 30, 30]
-        final_image = cv2.convertScaleAbs(inpainted_image, alpha=1.5, beta=15)
+        # inpainted_image = cv2.inpaint(inpainted_image, mask_total, 10, cv2.INPAINT_TELEA)
 
-        # inpainted_image = cv2.inpaint(image.copy(), mask_total, 15, cv2.INPAINT_TELEA)
-        # cv2.imwrite('test_images/inpainted_init.png', inpainted_image)
-        # cv2.imwrite('test_images/inpainted_final.png', final_image)
-        logging.info('Yolo 결과 인페인팅 및 후보정 완료.')
-
-        return final_image
+        return text_np, masks_np, inpainted_image
 
     def inpaint_from_user(self, image, user_boxes, save_path=None):
         masks_np = np.zeros(image.shape[:2], dtype=np.uint8)
@@ -169,12 +170,15 @@ class AIProcessor:
         bbox = self.object_detection(image)
         if len(bbox) > 0:
             logging.info("***** 1차: 객체 탐지 세그멘테이션 시작 ******")
-            masks_by_yolo = self.segment_from_yolo(image, bbox, save_path=None)  # 'test_images/seg_box.png'
+            # masks_by_yolo = self.segment_from_yolo(image, bbox, save_path=None)  # 'test_images/seg_box.png'
+            recovery, masks_by_yolo, image_output = self.inpaint_from_yolo(image_output, bbox)
             masks_total = cv2.bitwise_or(masks_total, masks_by_yolo)
+            logging.info('***** 1차: 객차 탐지 인페인팅 수행 완료 ******')
+            # cv2.imwrite('inpainted_yolo_복원.jpg', recovery.astype(np.uint8))  # 인식 및 복원하는 문항
+            # cv2.imwrite('inpainted_yolo_결과.jpg', image_output)  # 1차 마스킹 및 인페인팅 결과
         else:
             logging.info("***** 1차: 객체 탐지 세그멘테이션 스킵 ******")
             masks_by_yolo = None
-
 
         ### 2차: Segment by User Prompt
         if len(user_inputs) > 0:
