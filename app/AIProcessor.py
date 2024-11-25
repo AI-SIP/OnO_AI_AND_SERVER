@@ -129,17 +129,18 @@ class AIProcessor:
         return text_np, masks_np, inpainted_image
 
     def inpaint_from_user(self, image, user_boxes, save_path=None):
-        masks_np = np.zeros(image.shape[:2], dtype=np.uint8)
-        for b in user_boxes:  # 박스 내부 다 채우기(마스킹)
+        inpainted_image = image.copy()
+        masks_np = np.zeros(image.shape[:2], dtype=np.uint8)  # 박스 위치 마스킹
+        for b in user_boxes:
             minx, miny, maxx, maxy = map(int, b)
             masks_np[miny:maxy, minx:maxx] = 255  # 박스 영역을 255로 채움
+            if minx > 2:  # 박스 근처 BG 컬러 샘플링
+                sample_color = image[(miny + maxy) // 2, minx-2].tolist()  # 우측 상단 모서리 바로 외부의 픽셀
+            else:
+                sample_color = [255, 255, 255]  # 경계에 있을 경우, 기본 흰색
+            inpainted_image[miny:maxy, minx:maxx] = sample_color  # 인페인팅
+            logging.info(f'2차 인페인팅 - user 박스 샘플링 컬러 RGB: {sample_color}')
 
-        # cv2.imwrite(save_path, mask_points_uint8)
-        inpainted_image = image.copy()
-        inpainted_image[masks_np == 255] = [255, 255, 255]
-        # final_image = cv2.convertScaleAbs(inpainted_image, alpha=1.5, beta=10)
-
-        logging.info(f'2차 마스킹 & 인페인팅 - 사용자 입력 {len(user_boxes)}개 영역 인페인팅 완료.')
         return masks_np, inpainted_image
 
     def combine_alpha(self, image_rgb):
@@ -183,14 +184,14 @@ class AIProcessor:
         ### 2차: Segment by User Prompt
         if len(user_inputs) > 0:
             logging.info("***** 2차: 사용자 입력 세그멘테이션 시작 ******")
-            masks_by_user = self.segment_from_user(image, user_inputs, bbox, save_path=None)  # save_path='test_images/seg_points.png'
+            # masks_by_user = self.segment_from_user(image, user_inputs, bbox, save_path=None)  # save_path='test_images/seg_points.png'
+            masks_by_user, image_output = self.inpaint_from_user(image_output, user_inputs)
             masks_total = cv2.bitwise_or(masks_total, masks_by_user)
-            masks_by_user, image_output = self.inpaint_from_user(image, user_inputs, save_path=None)
-            _, mask_bytes = cv2.imencode("." + extension, image_output)
+            logging.info('***** 2차: 사용자 입력 인페인팅 수행 완료 ******')
+            # cv2.imwrite('inpainted_yolo&user_결과.jpg', image_output)
         else:
             logging.info("***** 2차: 사용자 입력 세그멘테이션 스킵 ******")
             masks_by_user = None
-            mask_bytes = None
 
         if isinstance(masks_total, np.ndarray) and len(bbox) > 0:
             image_output = self.inpainting(image_output, masks_total, bbox)
