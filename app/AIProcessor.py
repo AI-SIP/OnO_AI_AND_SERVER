@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 from ultralytics import YOLO
 from ultralytics import SAM
-from segment_anything import sam_model_registry, SamPredictor
+# from segment_anything import sam_model_registry, SamPredictor
 import io
 import logging
 
@@ -50,9 +50,10 @@ class AIProcessor:
         return image_rgb
 
     def load_sam_model(self, model_type="vit_h"):  # sam 로드
-        self.sam_model = sam_model_registry[model_type](checkpoint=self.sam_path)
-        self.sam_model.to(self.device)
-        self.predictor = SamPredictor(self.sam_model)
+        # self.sam_model = sam_model_registry[model_type](checkpoint=self.sam_path)
+        # self.sam_model.to(self.device)
+        # self.predictor = SamPredictor(self.sam_model)
+        logging.info("SAM model cannot be loaded")
 
     def object_detection(self, img):
         results = self.yolo_model.predict(source=img, imgsz=640, device=self.device,
