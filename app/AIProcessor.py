@@ -76,9 +76,7 @@ class AIProcessor:
                 # kernel = np.ones((15, 15), np.uint8)
                 # mask_np = cv2.morphologyEx(mask_np, cv2.MORPH_GRADIENT, kernel)'''
             masks_np = cv2.bitwise_or(masks_np, mask_np)
-            # cv2.imwrite(f'mask_box{i}.jpg', masks_np)
 
-        # cv2.imwrite(save_path, masks_np)
         logging.info(f'1차 마스킹 - 바운딩 박스 {len(mask_boxes)}개 세그먼트 완료.')
         return masks_np
 
@@ -96,7 +94,6 @@ class AIProcessor:
             mask_np = mask_np.squeeze()
             masks_np = cv2.bitwise_or(masks_np, mask_np)
 
-        # cv2.imwrite(save_path, mask_points_uint8)
         logging.info(f'2차 마스킹 - 사용자 입력에 대해 {len(mask_points)}개 영역으로 세그먼트 완료.')
         return masks_np
 
@@ -196,9 +193,9 @@ class AIProcessor:
         image_output = cv2.convertScaleAbs(image_output, alpha=1.5, beta=10)
         logging.info("***** 필기 제거 결과 후보정 완료 ******")
 
+        # 5가지 bytes 생성
         _, input_bytes = cv2.imencode("." + extension, image)
         _, result_bytes = cv2.imencode("." + extension, image_output)
-
         if masks_by_yolo is not None:
             mask_by_yolo_img = image.copy()
             mask_by_yolo_img[masks_by_yolo == 255] = [0, 0, 0]
@@ -211,10 +208,13 @@ class AIProcessor:
             _, mask_by_user_bytes = cv2.imencode("." + extension, mask_by_user_img)
         else:
             mask_by_user_bytes = None
-
         mask_total_img = image.copy()
         mask_total_img[masks_total == 255] = [0, 0, 0]
         _, mask_bytes = cv2.imencode("." + extension, mask_total_img)
+
+        # cv2.imwrite('input.jpg', image)
+        # cv2.imwrite('mask_total.jpg', mask_total_img)
+        # cv2.imwrite('output.jpg', image_output)
 
         return (io.BytesIO(input_bytes), io.BytesIO(mask_bytes), io.BytesIO(result_bytes),
                 io.BytesIO(mask_by_yolo_bytes), io.BytesIO(mask_by_user_bytes))
