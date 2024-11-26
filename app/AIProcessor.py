@@ -22,6 +22,7 @@ class AIProcessor:
         self.size = 0
         self.height = 0
         self.width = 0
+        self.upper_rgb = (40, 40, 45)
 
     def remove_points_in_bboxes(self, point_list, label_list, bbox_list):
         def is_point_in_bbox(p, b):
@@ -60,7 +61,7 @@ class AIProcessor:
                                           iou=0.3, conf=0.3)
         bbox = results[0].boxes.xyxy.tolist()
         self.indices = [index for index, value in enumerate(results[0].boxes.cls) if value == 1.0]
-        logging.info(f'객체 탐지 - {self.indices} 박스에 동그라미 존재')
+        logging.info(f'객체 탐지 - {len(bbox)}개 결과 중, 동그란 마킹 {len(self.indices)}개 ({self.indices})')
         return bbox
 
     def segment_from_yolo(self, image, bbox, save_path=None):
@@ -107,7 +108,7 @@ class AIProcessor:
             masks_np[miny:maxy, minx:maxx] = 255  # 박스 영역을 255로 채움
 
             roi = image[miny:maxy, minx:maxx]  # 박스 내 복사하고 텍스트만 추출하기
-            roi_mask = cv2.inRange(roi, (0, 0, 0), (40, 40, 45))  # roi 내에서 인쇄된 글씨는 255값
+            roi_mask = cv2.inRange(roi, (0, 0, 0), self.upper_rgb)  # roi 내에서 인쇄된 글씨는 255값
             text_np[miny:maxy, minx:maxx] = roi_mask
 
             if maxy < image.shape[0]-2:  # 박스 근처 BG 컬러 샘플링
@@ -148,7 +149,7 @@ class AIProcessor:
         else:
             return image_rgb
 
-    def process(self, img_bytes, user_inputs, extension='jpg'):
+    def process(self, img_bytes, user_inputs, user_intensity, extension='jpg'):
         """ local test 용도 Vs. server test 용도 구분 """
         ### local 용도
         # img_path = img_bytes
@@ -163,6 +164,9 @@ class AIProcessor:
         ### ready
         #self.load_sam_model()
         #self.predictor.set_image(image)
+        if user_intensity is not None and len(user_intensity) == 3:
+            self.upper_rgb = (user_intensity[0], user_intensity[1], user_intensity[2])
+        logging.info(f"인식할 text 색상 범위: (0, 0, 0) ~ {self.upper_rgb}")
         masks_total = np.zeros(image.shape[:2], dtype=np.uint8)
 
         ### 1차: Segment by Object Detection
